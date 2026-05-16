@@ -1,0 +1,2 @@
+# Trade-Gro
+Paper trading 

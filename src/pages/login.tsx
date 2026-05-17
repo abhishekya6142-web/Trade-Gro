@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useInitUser } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -11,7 +10,6 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [displayName, setDisplayName] = useState("");
-  const initUser = useInitUser();
 
   const handleStart = () => {
     if (!displayName.trim()) {
@@ -25,23 +23,8 @@ export default function Login() {
 
     const userId = crypto.randomUUID();
     localStorage.setItem("tradevision_user_id", userId);
-
-    initUser.mutate(
-      { data: { id: userId, name: displayName } },
-      {
-        onSuccess: () => {
-          setLocation("/dashboard");
-        },
-        onError: () => {
-          localStorage.removeItem("tradevision_user_id");
-          toast({
-            title: "Failed to initialize",
-            description: "Could not create your account. Please try again.",
-            variant: "destructive",
-          });
-        }
-      }
-    );
+    localStorage.setItem("tradevision_user_name", displayName);
+    setLocation("/dashboard");
   };
 
   return (
@@ -73,7 +56,6 @@ export default function Login() {
                 className="h-12 bg-secondary/50 border-border/50 focus-visible:ring-primary"
               />
             </div>
-            
             <div className="rounded-lg bg-secondary/30 p-4 border border-border/50">
               <h4 className="text-sm font-semibold mb-2">What you get:</h4>
               <ul className="text-sm text-muted-foreground space-y-2">
@@ -97,13 +79,12 @@ export default function Login() {
           <Button 
             className="w-full h-12 text-base font-semibold" 
             onClick={handleStart}
-            disabled={initUser.isPending}
           >
-            {initUser.isPending ? "Setting up..." : "Start Trading"}
+            Start Trading
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </CardFooter>
       </Card>
     </div>
   );
-}
+}                

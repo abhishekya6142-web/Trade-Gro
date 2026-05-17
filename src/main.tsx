@@ -25,7 +25,7 @@ window.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
   return _origFetch(input, init);
 };
 
-setBaseUrl("");
+setBaseUrl(import.meta.env.VITE_API_URL || "");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

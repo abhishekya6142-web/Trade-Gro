@@ -6,6 +6,8 @@ const supabase = createClient(
 );
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
   const userId = req.headers['x-user-id'];
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -81,4 +83,4 @@ export default async function handler(req: any, res: any) {
     positions,
     monthlyData: [],
   });
-          }
+            }

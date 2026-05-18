@@ -1,33 +1,34 @@
-export default async function handler(req: any, res: any) {
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  
   const { symbol } = req.query;
   
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=2d`;
+    // Yahoo Finance API (free, no key needed)
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
     const response = await fetch(url);
-    const json = await response.json();
-    const meta = json?.chart?.result?.[0]?.meta;
+    const data = await response.json();
     
-    if (!meta) return res.status(404).json({ error: 'Stock not found' });
+    const quote = data?.chart?.result?.[0]?.meta;
     
-    const price = meta.regularMarketPrice || 0;
-    const prev = meta.previousClose || price;
-    const change = price - prev;
-    const changePercent = prev ? (change / prev) * 100 : 0;
+    if (!quote) {
+      return res.status(404).json({ error: 'Stock not found' });
+    }
     
-    return res.status(200).json({
-      symbol,
-      name: meta.longName || symbol,
-      price,
-      change: parseFloat(change.toFixed(2)),
-      changePercent: parseFloat(changePercent.toFixed(2)),
-      volume: meta.regularMarketVolume || 0,
-      marketCap: meta.marketCap,
-      high52w: meta.fiftyTwoWeekHigh,
-      low52w: meta.fiftyTwoWeekLow,
-      open: meta.regularMarketOpen,
-      previousClose: meta.previousClose,
+    res.status(200).json({
+      symbol: quote.symbol,
+      price: quote.regularMarketPrice || 0,
+      previousClose: quote.chartPreviousClose || 0,
+      change: (quote.regularMarketPrice - quote.chartPreviousClose) || 0,
+      changePercent: (((quote.regularMarketPrice - quote.chartPreviousClose) / quote.chartPreviousClose) * 100) || 0,
+      high52w: quote.fiftyTwoWeekHigh || 0,
+      low52w: quote.fiftyTwoWeekLow || 0,
+      open: quote.regularMarketOpen || 0,
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch stock' });
+    res.status(500).json({ error: 'Failed to fetch stock data' });
   }
 }

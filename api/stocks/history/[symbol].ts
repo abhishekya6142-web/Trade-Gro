@@ -1,28 +1,32 @@
-export default async function handler(req: any, res: any) {
-  const { symbol, interval = '1d', range = '1mo' } = req.query;
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
+  const { symbol, interval = '1d', range = '3mo' } = req.query;
   
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=${interval}&range=${range}`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
     const response = await fetch(url);
-    const json = await response.json();
-    const result = json?.chart?.result?.[0];
+    const data = await response.json();
     
-    if (!result) return res.status(404).json({ error: 'No data found' });
+    const result = data?.chart?.result?.[0];
+    if (!result) return res.status(404).json({ error: 'No data' });
     
-    const timestamps = result.timestamp || [];
-    const quotes = result.indicators?.quote?.[0] || {};
+    const timestamps = result.timestamp;
+    const ohlcv = result.indicators.quote[0];
     
-    const candles = timestamps.map((time: number, i: number) => ({
-      time,
-      open: quotes.open?.[i] || 0,
-      high: quotes.high?.[i] || 0,
-      low: quotes.low?.[i] || 0,
-      close: quotes.close?.[i] || 0,
-      volume: quotes.volume?.[i] || 0,
-    })).filter((c: any) => c.close > 0);
+    const candles = timestamps.map((ts: number, i: number) => ({
+      time: ts,
+      open: ohlcv.open[i],
+      high: ohlcv.high[i],
+      low: ohlcv.low[i],
+      close: ohlcv.close[i],
+      volume: ohlcv.volume[i],
+    })).filter((c: any) => c.open && c.high && c.low && c.close);
     
-    return res.status(200).json({ symbol, candles });
+    res.status(200).json({ symbol, candles });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch history' });
+    res.status(500).json({ error: 'Failed to fetch history' });
   }
 }

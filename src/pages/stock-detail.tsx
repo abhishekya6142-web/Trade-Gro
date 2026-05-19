@@ -2,12 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetStockQuote,
-  useGetStockHistory,
   useGetNews,
   useExecuteTrade,
   useAnalyzeChart,
   getGetStockQuoteQueryKey,
-  getGetStockHistoryQueryKey,
   getGetPortfolioQueryKey,
   getGetMeQueryKey,
   getGetTradesQueryKey,
@@ -34,33 +32,20 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { CandlestickChart } from "@/components/CandlestickChart";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
 
 interface IntervalOption {
   label: string;
-  interval: string;
-  range: string;
-  group: string;
+  tvInterval: string;
 }
 
-// Fixed: removed duplicate 2h/4h (same as 1h) and duplicate 3M (same as 1M)
 const INTERVALS: IntervalOption[] = [
-  { label: "1m",  interval: "1m",  range: "1d",  group: "MINUTES" },
-  { label: "2m",  interval: "2m",  range: "5d",  group: "MINUTES" },
-  { label: "5m",  interval: "5m",  range: "5d",  group: "MINUTES" },
-  { label: "15m", interval: "15m", range: "5d",  group: "MINUTES" },
-  { label: "30m", interval: "30m", range: "1mo", group: "MINUTES" },
-  { label: "1h",  interval: "60m", range: "1mo", group: "HOURS" },
-  { label: "1D",  interval: "1d",  range: "1mo", group: "DAYS" },
-  { label: "1W",  interval: "1d",  range: "3mo", group: "DAYS" },
-  { label: "1M",  interval: "1wk", range: "6mo", group: "DAYS" },
-  { label: "3M",  interval: "1mo", range: "1y",  group: "DAYS" },
-  { label: "1Y",  interval: "1mo", range: "5y",  group: "DAYS" },
+  { label: "15m", tvInterval: "15"  },
+  { label: "1h",  tvInterval: "60"  },
+  { label: "1D",  tvInterval: "D"   },
+  { label: "1W",  tvInterval: "W"   },
+  { label: "1M",  tvInterval: "M"   },
 ];
-
-const QUICK_RANGES = ["15m", "1h", "1D", "1W", "1M"];
 
 export default function StockDetail() {
   const params = useParams<{ symbol: string }>();
@@ -72,47 +57,22 @@ export default function StockDetail() {
   const [selectedInterval, setSelectedInterval] = useState<IntervalOption>(
     INTERVALS.find((i) => i.label === "1D")!
   );
-  const [showIntervalPicker, setShowIntervalPicker] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
 
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState("1");
   const [tradeOpen, setTradeOpen] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowIntervalPicker(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   const { data: quote, isLoading: quoteLoading } = useGetStockQuote(symbol, {
     query: { enabled: !!symbol, queryKey: getGetStockQuoteQueryKey(symbol) },
   });
-
-  const { data: history, isLoading: historyLoading } = useGetStockHistory(
-    symbol,
-    { interval: selectedInterval.interval as any, range: selectedInterval.range as any },
-    {
-      query: {
-        enabled: !!symbol,
-        queryKey: getGetStockHistoryQueryKey(symbol, {
-          interval: selectedInterval.interval as any,
-          range: selectedInterval.range as any,
-        }),
-      },
-    }
-  );
 
   const { data: newsData } = useGetNews({ symbol });
   const executeTrade = useExecuteTrade();
   const analyzeChart = useAnalyzeChart();
 
   const isPositive = (quote?.change ?? 0) >= 0;
+  const ticker = symbol.replace(".NS", "").replace(".KS", "");
 
   const handleTrade = () => {
     const shares = parseInt(tradeShares);
@@ -145,18 +105,11 @@ export default function StockDetail() {
   };
 
   const handleAnalyze = () => {
-    if (!history?.candles?.length) {
-      toast({ title: "No chart data", variant: "destructive" });
-      return;
-    }
     setAnalysisOpen(true);
-    analyzeChart.mutate({ data: { symbol, candles: history.candles, interval: selectedInterval.interval } });
+    analyzeChart.mutate({ data: { symbol, candles: [], interval: selectedInterval.label } });
   };
 
   const totalTradeValue = (parseInt(tradeShares) || 0) * (quote?.price ?? 0);
-  const ticker = symbol.replace(".NS", "").replace(".KS", "");
-
-  const groups = Array.from(new Set(INTERVALS.map((i) => i.group)));
 
   return (
     <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
@@ -189,7 +142,7 @@ export default function StockDetail() {
           {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
             <>
               <div className="text-3xl font-bold text-white">{formatCurrency(quote?.price ?? 0)}</div>
-              <div className={`flex items-center gap-1 mt-1 text-base font-semibold`}
+              <div className="flex items-center gap-1 mt-1 text-base font-semibold"
                 style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
                 {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
                 {formatCurrency(Math.abs(quote?.change ?? 0), true)} ({formatPercent(Math.abs(quote?.changePercent ?? 0))})
@@ -198,10 +151,10 @@ export default function StockDetail() {
           )}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #1E2A40" }}>
             {[
-              { label: "Open",       value: quote?.open          ? formatCurrency(quote.open)          : "—" },
-              { label: "Prev Close", value: quote?.previousClose  ? formatCurrency(quote.previousClose) : "—" },
-              { label: "52W High",   value: quote?.high52w        ? formatCurrency(quote.high52w)       : "—", color: "#00D897" },
-              { label: "52W Low",    value: quote?.low52w         ? formatCurrency(quote.low52w)        : "—", color: "#FF4757" },
+              { label: "Open",       value: quote?.open         ? formatCurrency(quote.open)         : "—" },
+              { label: "Prev Close", value: quote?.previousClose ? formatCurrency(quote.previousClose): "—" },
+              { label: "52W High",   value: quote?.high52w       ? formatCurrency(quote.high52w)      : "—", color: "#00D897" },
+              { label: "52W Low",    value: quote?.low52w        ? formatCurrency(quote.low52w)       : "—", color: "#FF4757" },
             ].map((s) => (
               <div key={s.label}>
                 <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>{s.label}</p>
@@ -221,14 +174,12 @@ export default function StockDetail() {
         <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
           {/* Chart toolbar */}
           <div className="flex items-center justify-between px-4 py-3 gap-2 flex-wrap" style={{ borderBottom: "1px solid #1E2A40" }}>
-            {/* Quick range buttons */}
             <div className="flex items-center gap-1">
-              {QUICK_RANGES.map((label) => {
-                const opt = INTERVALS.find((i) => i.label === label)!;
-                const isActive = selectedInterval.label === label;
+              {INTERVALS.map((opt) => {
+                const isActive = selectedInterval.label === opt.label;
                 return (
                   <button
-                    key={label}
+                    key={opt.label}
                     onClick={() => setSelectedInterval(opt)}
                     className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
                     style={{
@@ -236,84 +187,34 @@ export default function StockDetail() {
                       color: isActive ? "#0A0E1A" : "#8B9CB3",
                     }}
                   >
-                    {label}
+                    {opt.label}
                   </button>
                 );
               })}
             </div>
-
-            <div className="flex items-center gap-2">
-              {/* Interval picker */}
-              <div className="relative" ref={pickerRef}>
-                <button
-                  onClick={() => setShowIntervalPicker((v) => !v)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={{ background: "#1A2540", color: "#8B9CB3", border: "1px solid #1E2A40" }}
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                  {selectedInterval.label}
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-
-                {showIntervalPicker && (
-                  <div
-                    className="absolute right-0 mt-1 z-30 rounded-xl p-3 w-64 shadow-xl"
-                    style={{ background: "#0F1629", border: "1px solid #1E2A40", top: "100%" }}
-                  >
-                    {groups.map((group) => (
-                      <div key={group} className="mb-3 last:mb-0">
-                        <p className="text-[10px] font-bold mb-2 tracking-wider" style={{ color: "#4A5568" }}>{group}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {INTERVALS.filter((i) => i.group === group).map((opt) => {
-                            const isActive = selectedInterval.label === opt.label;
-                            return (
-                              <button
-                                key={opt.label}
-                                onClick={() => { setSelectedInterval(opt); setShowIntervalPicker(false); }}
-                                className="w-14 py-2 rounded-xl text-xs font-semibold transition-all"
-                                style={{
-                                  background: isActive ? "white" : "#1A2540",
-                                  color: isActive ? "#0A0E1A" : "#8B9CB3",
-                                }}
-                              >
-                                {opt.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {group !== groups[groups.length - 1] && (
-                          <div className="mt-3" style={{ borderBottom: "1px solid #1E2A40" }} />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* AI Analysis */}
-              <button
-                onClick={handleAnalyze}
-                disabled={analyzeChart.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}
-              >
-                <BrainCircuit className="h-3.5 w-3.5" />
-                {analyzeChart.isPending ? "Analyzing…" : "AI Analysis"}
-              </button>
-            </div>
+            <button
+              onClick={handleAnalyze}
+              disabled={analyzeChart.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}
+            >
+              <BrainCircuit className="h-3.5 w-3.5" />
+              {analyzeChart.isPending ? "Analyzing…" : "AI Analysis"}
+            </button>
           </div>
 
-          {/* Chart */}
+          {/* TradingView Chart */}
           <div className="p-3">
-            {historyLoading ? (
-              <Skeleton className="w-full h-80 rounded-xl" />
-            ) : history?.candles?.length ? (
-              <CandlestickChart data={history.candles} />
-            ) : (
-              <div className="flex items-center justify-center h-80" style={{ color: "#8B9CB3" }}>
-                No chart data available
-              </div>
-            )}
+            <iframe
+              key={`${ticker}-${selectedInterval.tvInterval}`}
+              src={`https://s.tradingview.com/widgetembed/?symbol=NSE:${ticker}&interval=${selectedInterval.tvInterval}&theme=dark&style=1&locale=en&hide_top_toolbar=0&hide_legend=0&save_image=0`}
+              width="100%"
+              height="450"
+              frameBorder="0"
+              allowTransparency={true}
+              scrolling="no"
+              style={{ borderRadius: "12px" }}
+            />
           </div>
         </div>
 
@@ -446,38 +347,10 @@ export default function StockDetail() {
                 <p className="text-xs font-semibold mb-1" style={{ color: "#8B9CB3" }}>Summary</p>
                 <p className="text-sm leading-relaxed">{analyzeChart.data.summary}</p>
               </div>
-              <div>
-                <p className="text-xs font-semibold mb-1" style={{ color: "#8B9CB3" }}>Recommendation</p>
-                <p className="text-sm leading-relaxed">{analyzeChart.data.recommendation}</p>
-              </div>
-              {analyzeChart.data.patterns.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "#8B9CB3" }}>Patterns Detected</p>
-                  <div className="flex flex-wrap gap-2">
-                    {analyzeChart.data.patterns.map((p) => <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>)}
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                {analyzeChart.data.supportLevel != null && (
-                  <div className="p-2.5 rounded-lg" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-                    <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>Support</p>
-                    <p className="font-semibold" style={{ color: "#00D897" }}>{formatCurrency(analyzeChart.data.supportLevel)}</p>
-                  </div>
-                )}
-                {analyzeChart.data.resistanceLevel != null && (
-                  <div className="p-2.5 rounded-lg" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-                    <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>Resistance</p>
-                    <p className="font-semibold" style={{ color: "#FF4757" }}>{formatCurrency(analyzeChart.data.resistanceLevel)}</p>
-                  </div>
-                )}
-              </div>
             </div>
-          ) : analyzeChart.error ? (
-            <p className="py-4 text-center text-sm" style={{ color: "#8B9CB3" }}>Analysis failed. Please try again.</p>
           ) : null}
         </DialogContent>
       </Dialog>
     </div>
   );
-}
+                                                                                   }    

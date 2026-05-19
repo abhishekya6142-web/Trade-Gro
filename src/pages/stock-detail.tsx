@@ -28,8 +28,8 @@ import {
   ArrowLeft,
   BrainCircuit,
   Newspaper,
-  Clock,
-  ChevronDown,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,11 +40,11 @@ interface IntervalOption {
 }
 
 const INTERVALS: IntervalOption[] = [
-  { label: "15m", tvInterval: "15"  },
-  { label: "1h",  tvInterval: "60"  },
-  { label: "1D",  tvInterval: "D"   },
-  { label: "1W",  tvInterval: "W"   },
-  { label: "1M",  tvInterval: "M"   },
+  { label: "15m", tvInterval: "15" },
+  { label: "1h",  tvInterval: "60" },
+  { label: "1D",  tvInterval: "D"  },
+  { label: "1W",  tvInterval: "W"  },
+  { label: "1M",  tvInterval: "M"  },
 ];
 
 export default function StockDetail() {
@@ -57,7 +57,7 @@ export default function StockDetail() {
   const [selectedInterval, setSelectedInterval] = useState<IntervalOption>(
     INTERVALS.find((i) => i.label === "1D")!
   );
-
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState("1");
   const [tradeOpen, setTradeOpen] = useState(false);
@@ -72,7 +72,12 @@ export default function StockDetail() {
   const analyzeChart = useAnalyzeChart();
 
   const isPositive = (quote?.change ?? 0) >= 0;
-  const ticker = symbol.replace(".NS", "").replace(".KS", "");
+
+  // ticker: RELIANCE.NS → RELIANCE
+  const ticker = symbol.replace(".NS", "").replace(".BO", "").replace(".KS", "");
+
+  // TradingView NSE symbol — encode properly
+  const tvSymbol = encodeURIComponent(`NSE:${ticker}`);
 
   const handleTrade = () => {
     const shares = parseInt(tradeShares);
@@ -111,167 +116,216 @@ export default function StockDetail() {
 
   const totalTradeValue = (parseInt(tradeShares) || 0) * (quote?.price ?? 0);
 
-  return (
-    <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
-      <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
+  const chartIframe = (
+    <iframe
+      key={`${tvSymbol}-${selectedInterval.tvInterval}`}
+      src={`https://s.tradingview.com/widgetembed/?symbol=${tvSymbol}&interval=${selectedInterval.tvInterval}&theme=dark&style=1&locale=en&allow_symbol_change=0&save_image=0&hide_top_toolbar=0`}
+      width="100%"
+      height={isFullscreen ? "100%" : "450"}
+      frameBorder="0"
+      allowTransparency={true}
+      scrolling="no"
+      style={{ borderRadius: isFullscreen ? "0" : "12px", display: "block" }}
+    />
+  );
 
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setLocation("/markets")}
-            className="p-2 rounded-xl transition-colors"
-            style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
-          >
-            <ArrowLeft className="h-4 w-4 text-white" />
-          </button>
-          <div className="flex-1 min-w-0">
-            {quoteLoading ? <Skeleton className="h-7 w-40" /> : (
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold text-white">{quote?.symbol ?? ticker}</h1>
-                <Badge variant="outline" className="text-xs" style={{ borderColor: "#1E2A40", color: "#8B9CB3" }}>
-                  {quote?.sector ?? "Equity"}
-                </Badge>
+  return (
+    <>
+      {/* Fullscreen overlay */}
+      {isFullscreen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col"
+          style={{ background: "#0A0E1A" }}
+        >
+          {/* Fullscreen toolbar */}
+          <div className="flex items-center justify-between px-4 py-2 flex-shrink-0" style={{ borderBottom: "1px solid #1E2A40" }}>
+            <div className="flex items-center gap-1">
+              {INTERVALS.map((opt) => (
+                <button
+                  key={opt.label}
+                  onClick={() => setSelectedInterval(opt)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    background: selectedInterval.label === opt.label ? "#00D897" : "transparent",
+                    color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="p-2 rounded-xl"
+              style={{ background: "#1A2540", color: "#8B9CB3" }}
+            >
+              <Minimize2 className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {chartIframe}
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
+        <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
+
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setLocation("/markets")}
+              className="p-2 rounded-xl transition-colors"
+              style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
+            >
+              <ArrowLeft className="h-4 w-4 text-white" />
+            </button>
+            <div className="flex-1 min-w-0">
+              {quoteLoading ? <Skeleton className="h-7 w-40" /> : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-bold text-white">{quote?.symbol ?? ticker}</h1>
+                  <Badge variant="outline" className="text-xs" style={{ borderColor: "#1E2A40", color: "#8B9CB3" }}>
+                    {quote?.sector ?? "Equity"}
+                  </Badge>
+                </div>
+              )}
+              <p className="text-xs truncate mt-0.5" style={{ color: "#8B9CB3" }}>{quote?.name ?? symbol}</p>
+            </div>
+          </div>
+
+          {/* Price Hero */}
+          <div className="rounded-2xl p-4" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
+            {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
+              <>
+                <div className="text-3xl font-bold text-white">{formatCurrency(quote?.price ?? 0)}</div>
+                <div className="flex items-center gap-1 mt-1 text-base font-semibold"
+                  style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
+                  {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                  {formatCurrency(Math.abs(quote?.change ?? 0), true)} ({formatPercent(Math.abs(quote?.changePercent ?? 0))})
+                </div>
+              </>
+            )}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #1E2A40" }}>
+              {[
+                { label: "Open",       value: quote?.open          ? formatCurrency(quote.open)          : "—" },
+                { label: "Prev Close", value: quote?.previousClose  ? formatCurrency(quote.previousClose) : "—" },
+                { label: "52W High",   value: quote?.high52w        ? formatCurrency(quote.high52w)       : "—", color: "#00D897" },
+                { label: "52W Low",    value: quote?.low52w         ? formatCurrency(quote.low52w)        : "—", color: "#FF4757" },
+              ].map((s) => (
+                <div key={s.label}>
+                  <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>{s.label}</p>
+                  <p className="text-sm font-semibold" style={{ color: s.color ?? "white" }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+            {quote?.volume && (
+              <div className="mt-3 pt-3" style={{ borderTop: "1px solid #1E2A40" }}>
+                <p className="text-xs" style={{ color: "#8B9CB3" }}>Volume</p>
+                <p className="text-sm font-semibold text-white">{quote.volume.toLocaleString("en-IN")}</p>
               </div>
             )}
-            <p className="text-xs truncate mt-0.5" style={{ color: "#8B9CB3" }}>{quote?.name ?? symbol}</p>
           </div>
-        </div>
 
-        {/* Price Hero */}
-        <div className="rounded-2xl p-4" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-          {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
-            <>
-              <div className="text-3xl font-bold text-white">{formatCurrency(quote?.price ?? 0)}</div>
-              <div className="flex items-center gap-1 mt-1 text-base font-semibold"
-                style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
-                {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
-                {formatCurrency(Math.abs(quote?.change ?? 0), true)} ({formatPercent(Math.abs(quote?.changePercent ?? 0))})
-              </div>
-            </>
-          )}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #1E2A40" }}>
-            {[
-              { label: "Open",       value: quote?.open         ? formatCurrency(quote.open)         : "—" },
-              { label: "Prev Close", value: quote?.previousClose ? formatCurrency(quote.previousClose): "—" },
-              { label: "52W High",   value: quote?.high52w       ? formatCurrency(quote.high52w)      : "—", color: "#00D897" },
-              { label: "52W Low",    value: quote?.low52w        ? formatCurrency(quote.low52w)       : "—", color: "#FF4757" },
-            ].map((s) => (
-              <div key={s.label}>
-                <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>{s.label}</p>
-                <p className="text-sm font-semibold" style={{ color: s.color ?? "white" }}>{s.value}</p>
-              </div>
-            ))}
-          </div>
-          {quote?.volume && (
-            <div className="mt-3 pt-3" style={{ borderTop: "1px solid #1E2A40" }}>
-              <p className="text-xs" style={{ color: "#8B9CB3" }}>Volume</p>
-              <p className="text-sm font-semibold text-white">{quote.volume.toLocaleString("en-IN")}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Chart Card */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-          {/* Chart toolbar */}
-          <div className="flex items-center justify-between px-4 py-3 gap-2 flex-wrap" style={{ borderBottom: "1px solid #1E2A40" }}>
-            <div className="flex items-center gap-1">
-              {INTERVALS.map((opt) => {
-                const isActive = selectedInterval.label === opt.label;
-                return (
+          {/* Chart Card */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
+            {/* Toolbar */}
+            <div className="flex items-center justify-between px-4 py-3 gap-2 flex-wrap" style={{ borderBottom: "1px solid #1E2A40" }}>
+              <div className="flex items-center gap-1">
+                {INTERVALS.map((opt) => (
                   <button
                     key={opt.label}
                     onClick={() => setSelectedInterval(opt)}
                     className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
                     style={{
-                      background: isActive ? "#00D897" : "transparent",
-                      color: isActive ? "#0A0E1A" : "#8B9CB3",
+                      background: selectedInterval.label === opt.label ? "#00D897" : "transparent",
+                      color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3",
                     }}
                   >
                     {opt.label}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleAnalyze}
+                  disabled={analyzeChart.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}
+                >
+                  <BrainCircuit className="h-3.5 w-3.5" />
+                  {analyzeChart.isPending ? "Analyzing…" : "AI Analysis"}
+                </button>
+                <button
+                  onClick={() => setIsFullscreen(true)}
+                  className="p-1.5 rounded-lg"
+                  style={{ background: "#1A2540", color: "#8B9CB3", border: "1px solid #1E2A40" }}
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
+
+            {/* Chart */}
+            <div className="p-3">
+              {chartIframe}
+            </div>
+          </div>
+
+          {/* Buy / Sell */}
+          <div className="flex gap-3">
             <button
-              onClick={handleAnalyze}
-              disabled={analyzeChart.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}
+              className="flex-1 h-12 rounded-xl text-base font-bold transition-all hover:opacity-90"
+              style={{ background: "#00D897", color: "#0A0E1A" }}
+              onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
             >
-              <BrainCircuit className="h-3.5 w-3.5" />
-              {analyzeChart.isPending ? "Analyzing…" : "AI Analysis"}
+              Buy
+            </button>
+            <button
+              className="flex-1 h-12 rounded-xl text-base font-bold transition-all hover:opacity-90"
+              style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
+              onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
+            >
+              Sell
             </button>
           </div>
 
-          {/* TradingView Chart */}
-          <div className="p-3">
-            <iframe
-              key={`${ticker}-${selectedInterval.tvInterval}`}
-              src={`https://s.tradingview.com/widgetembed/?symbol=NSE%3A${ticker}&interval=${selectedInterval.tvInterval}&theme=dark&style=1&locale=en&toolbar_bg=%230F1629&hide_top_toolbar=0&hide_side_toolbar=0&allow_symbol_change=0&save_image=0&studies=[]&show_popup_button=0`}
-              width="100%"
-              height="450"
-              frameBorder="0"
-              allowTransparency={true}
-              scrolling="no"
-              style={{ borderRadius: "12px" }}
-            />
-          </div>
-        </div>
-
-        {/* Buy / Sell */}
-        <div className="flex gap-3">
-          <button
-            className="flex-1 h-12 rounded-xl text-base font-bold transition-all hover:opacity-90"
-            style={{ background: "#00D897", color: "#0A0E1A" }}
-            onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
-          >
-            Buy
-          </button>
-          <button
-            className="flex-1 h-12 rounded-xl text-base font-bold transition-all hover:opacity-90"
-            style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
-            onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
-          >
-            Sell
-          </button>
-        </div>
-
-        {/* News */}
-        {newsData?.articles && newsData.articles.length > 0 && (
-          <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-            <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
-              <Newspaper className="h-4 w-4" style={{ color: "#8B9CB3" }} />
-              <span className="text-sm font-bold text-white">Related News</span>
+          {/* News */}
+          {newsData?.articles && newsData.articles.length > 0 && (
+            <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
+              <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
+                <Newspaper className="h-4 w-4" style={{ color: "#8B9CB3" }} />
+                <span className="text-sm font-bold text-white">Related News</span>
+              </div>
+              <div className="divide-y" style={{ borderColor: "#1E2A40" }}>
+                {newsData.articles.slice(0, 4).map((article) => (
+                  <a
+                    key={article.id}
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-4 py-3 hover:opacity-80 transition-opacity"
+                  >
+                    <p className="text-sm font-medium text-white leading-snug line-clamp-2">{article.title}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-xs" style={{ color: "#8B9CB3" }}>{article.source}</span>
+                      <span
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                        style={{
+                          background: article.sentiment === "positive" ? "rgba(0,216,151,0.15)"
+                            : article.sentiment === "negative" ? "rgba(255,71,87,0.15)" : "#1A2540",
+                          color: article.sentiment === "positive" ? "#00D897"
+                            : article.sentiment === "negative" ? "#FF4757" : "#8B9CB3",
+                        }}
+                      >
+                        {article.sentiment}
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
             </div>
-            <div className="divide-y" style={{ borderColor: "#1E2A40" }}>
-              {newsData.articles.slice(0, 4).map((article) => (
-                <a
-                  key={article.id}
-                  href={article.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block px-4 py-3 hover:opacity-80 transition-opacity"
-                >
-                  <p className="text-sm font-medium text-white leading-snug line-clamp-2">{article.title}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-xs" style={{ color: "#8B9CB3" }}>{article.source}</span>
-                    <span
-                      className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                      style={{
-                        background: article.sentiment === "positive" ? "rgba(0,216,151,0.15)"
-                          : article.sentiment === "negative" ? "rgba(255,71,87,0.15)" : "#1A2540",
-                        color: article.sentiment === "positive" ? "#00D897"
-                          : article.sentiment === "negative" ? "#FF4757" : "#8B9CB3",
-                      }}
-                    >
-                      {article.sentiment}
-                    </span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Trade Dialog */}
@@ -302,7 +356,7 @@ export default function StockDetail() {
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setTradeOpen(false)}>Cancel</Button>
               <Button
-                className="flex-1 font-bold text-white"
+                className="flex-1 font-bold"
                 style={{ background: tradeType === "buy" ? "#00D897" : "#FF4757", color: tradeType === "buy" ? "#0A0E1A" : "white" }}
                 onClick={handleTrade}
                 disabled={executeTrade.isPending}
@@ -351,6 +405,6 @@ export default function StockDetail() {
           ) : null}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
-                                                                                   }    
+                                                   }                          

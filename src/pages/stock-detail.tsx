@@ -1,3 +1,5 @@
+import { CandlestickChart } from "@/components/CandlestickChart";
+import { useGetStockHistory, getGetStockHistoryQueryKey } from "@workspace/api-client-react";
 import { useState, useRef, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import {

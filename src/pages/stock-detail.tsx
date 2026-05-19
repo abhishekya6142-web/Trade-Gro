@@ -207,7 +207,7 @@ export default function StockDetail() {
           <div className="p-3">
             <iframe
               key={`${ticker}-${selectedInterval.tvInterval}`}
-              src={`https://s.tradingview.com/widgetembed/?symbol=NSE:${ticker}&interval=${selectedInterval.tvInterval}&theme=dark&style=1&locale=en&hide_top_toolbar=0&hide_legend=0&save_image=0`}
+              src={`https://s.tradingview.com/widgetembed/?symbol=NSE%3A${ticker}&interval=${selectedInterval.tvInterval}&theme=dark&style=1&locale=en&toolbar_bg=%230F1629&hide_top_toolbar=0&hide_side_toolbar=0&allow_symbol_change=0&save_image=0&studies=[]&show_popup_button=0`}
               width="100%"
               height="450"
               frameBorder="0"

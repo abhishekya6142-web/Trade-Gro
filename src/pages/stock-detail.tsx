@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetStockQuote,
+  useGetStockHistory,
   useGetNews,
   useExecuteTrade,
   useAnalyzeChart,
   getGetStockQuoteQueryKey,
+  getGetStockHistoryQueryKey,
   getGetPortfolioQueryKey,
   getGetMeQueryKey,
   getGetTradesQueryKey,
@@ -32,19 +34,21 @@ import {
   Minimize2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { CandlestickChart } from "@/components/CandlestickChart";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface IntervalOption {
   label: string;
-  tvInterval: string;
+  interval: string;
+  range: string;
 }
 
 const INTERVALS: IntervalOption[] = [
-  { label: "15m", tvInterval: "15" },
-  { label: "1h",  tvInterval: "60" },
-  { label: "1D",  tvInterval: "D"  },
-  { label: "1W",  tvInterval: "W"  },
-  { label: "1M",  tvInterval: "M"  },
+  { label: "15m", interval: "15m", range: "1d"  },
+  { label: "1h",  interval: "60m", range: "5d"  },
+  { label: "1D",  interval: "1d",  range: "1mo" },
+  { label: "1W",  interval: "1d",  range: "3mo" },
+  { label: "1M",  interval: "1wk", range: "6mo" },
 ];
 
 export default function StockDetail() {
@@ -67,14 +71,26 @@ export default function StockDetail() {
     query: { enabled: !!symbol, queryKey: getGetStockQuoteQueryKey(symbol) },
   });
 
+  const { data: history, isLoading: historyLoading } = useGetStockHistory(
+    symbol,
+    { interval: selectedInterval.interval as any, range: selectedInterval.range as any },
+    {
+      query: {
+        enabled: !!symbol,
+        queryKey: getGetStockHistoryQueryKey(symbol, {
+          interval: selectedInterval.interval as any,
+          range: selectedInterval.range as any,
+        }),
+      },
+    }
+  );
+
   const { data: newsData } = useGetNews({ symbol });
   const executeTrade = useExecuteTrade();
   const analyzeChart = useAnalyzeChart();
 
   const isPositive = (quote?.change ?? 0) >= 0;
   const ticker = symbol.replace(".NS", "").replace(".BO", "").replace(".KS", "");
-  const exchange = symbol.endsWith(".BO") ? "BSE" : "NSE";
-  const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
 
   const handleTrade = () => {
     const shares = parseInt(tradeShares);
@@ -107,39 +123,42 @@ export default function StockDetail() {
   };
 
   const handleAnalyze = () => {
+    if (!history?.candles?.length) {
+      toast({ title: "No chart data", variant: "destructive" });
+      return;
+    }
     setAnalysisOpen(true);
-    analyzeChart.mutate({ data: { symbol, candles: [], interval: selectedInterval.label } });
+    analyzeChart.mutate({ data: { symbol, candles: history.candles, interval: selectedInterval.interval } });
   };
 
   const totalTradeValue = (parseInt(tradeShares) || 0) * (quote?.price ?? 0);
 
-  const chartIframe = (
-    <iframe
-      key={`${tvSymbol}-${selectedInterval.tvInterval}`}
-      src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview&symbol=${tvSymbol}&interval=${selectedInterval.tvInterval}&theme=dark&style=1&locale=in&timezone=Asia%2FKolkata&hide_top_toolbar=0&hide_legend=0&allow_symbol_change=0`}
-      width="100%"
-      height={isFullscreen ? "100%" : "450"}
-      frameBorder="0"
-      allowTransparency={true}
-      scrolling="no"
-      style={{ borderRadius: isFullscreen ? "0" : "12px", display: "block" }}
-    />
+  const chart = (
+    <div style={{ height: isFullscreen ? "100%" : "400px" }}>
+      {historyLoading ? (
+        <Skeleton className="w-full h-full rounded-xl" />
+      ) : history?.candles?.length ? (
+        <CandlestickChart data={history.candles} />
+      ) : (
+        <div className="flex items-center justify-center h-full text-sm" style={{ color: "#8B9CB3" }}>
+          No chart data available
+        </div>
+      )}
+    </div>
   );
 
   return (
     <>
+      {/* Fullscreen */}
       {isFullscreen && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0A0E1A" }}>
-          <div
-            className="flex items-center justify-between px-4 py-2 flex-shrink-0"
-            style={{ borderBottom: "1px solid #1E2A40" }}
-          >
+          <div className="flex items-center justify-between px-4 py-2 flex-shrink-0" style={{ borderBottom: "1px solid #1E2A40" }}>
             <div className="flex items-center gap-1">
               {INTERVALS.map((opt) => (
                 <button
                   key={opt.label}
                   onClick={() => setSelectedInterval(opt)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold"
                   style={{
                     background: selectedInterval.label === opt.label ? "#00D897" : "transparent",
                     color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3",
@@ -149,64 +168,20 @@ export default function StockDetail() {
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => setIsFullscreen(false)}
-              className="p-2 rounded-xl"
-              style={{ background: "#1A2540", color: "#8B9CB3" }}
-            >
-              <Minimize2 className="h-4 w-4" />
+            <button onClick={() => setIsFullscreen(false)} className="p-2 rounded-xl" style={{ background: "#1A2540" }}>
+              <Minimize2 className="h-4 w-4 text-white" />
             </button>
           </div>
-
-          <div className="flex-1 overflow-hidden" style={{ marginBottom: "60px" }}>
-            {chartIframe}
-          </div>
-
-          <div
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2"
-            style={{ height: "60px", background: "#0F1629", borderTop: "1px solid #1E2A40" }}
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white">{quote?.symbol ?? ticker}</p>
-              <p className="text-xs" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
-                {formatCurrency(quote?.price ?? 0)}&nbsp;
-                {isPositive ? "▲" : "▼"} {formatPercent(Math.abs(quote?.changePercent ?? 0))}
-              </p>
-            </div>
-            <button
-              onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
-              className="px-5 py-2 rounded-xl text-sm font-bold"
-              style={{ background: "#00D897", color: "#0A0E1A" }}
-            >
-              Buy
-            </button>
-            <button
-              onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
-              className="px-5 py-2 rounded-xl text-sm font-bold"
-              style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
-            >
-              Sell
-            </button>
-            <button
-              onClick={() => setIsFullscreen(false)}
-              className="p-2 rounded-xl"
-              style={{ background: "#1A2540", color: "#8B9CB3" }}
-            >
-              <Minimize2 className="h-4 w-4" />
-            </button>
-          </div>
+          <div className="flex-1">{chart}</div>
         </div>
       )}
 
       <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
         <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
 
+          {/* Header */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setLocation("/markets")}
-              className="p-2 rounded-xl transition-colors"
-              style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
-            >
+            <button onClick={() => setLocation("/markets")} className="p-2 rounded-xl" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
               <ArrowLeft className="h-4 w-4 text-white" />
             </button>
             <div className="flex-1 min-w-0">
@@ -222,12 +197,12 @@ export default function StockDetail() {
             </div>
           </div>
 
+          {/* Price */}
           <div className="rounded-2xl p-4" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
               <>
                 <div className="text-3xl font-bold text-white">{formatCurrency(quote?.price ?? 0)}</div>
-                <div className="flex items-center gap-1 mt-1 text-base font-semibold"
-                  style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
+                <div className="flex items-center gap-1 mt-1 text-base font-semibold" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
                   {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
                   {formatCurrency(Math.abs(quote?.change ?? 0), true)} ({formatPercent(Math.abs(quote?.changePercent ?? 0))})
                 </div>
@@ -235,10 +210,10 @@ export default function StockDetail() {
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #1E2A40" }}>
               {[
-                { label: "Open",       value: quote?.open         ? formatCurrency(quote.open)          : "—" },
-                { label: "Prev Close", value: quote?.previousClose ? formatCurrency(quote.previousClose) : "—" },
-                { label: "52W High",   value: quote?.high52w       ? formatCurrency(quote.high52w)       : "—", color: "#00D897" },
-                { label: "52W Low",    value: quote?.low52w        ? formatCurrency(quote.low52w)        : "—", color: "#FF4757" },
+                { label: "Open",       value: quote?.open          ? formatCurrency(quote.open)          : "—" },
+                { label: "Prev Close", value: quote?.previousClose  ? formatCurrency(quote.previousClose) : "—" },
+                { label: "52W High",   value: quote?.high52w        ? formatCurrency(quote.high52w)       : "—", color: "#00D897" },
+                { label: "52W Low",    value: quote?.low52w         ? formatCurrency(quote.low52w)        : "—", color: "#FF4757" },
               ].map((s) => (
                 <div key={s.label}>
                   <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>{s.label}</p>
@@ -254,14 +229,15 @@ export default function StockDetail() {
             )}
           </div>
 
+          {/* Chart */}
           <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-            <div className="flex items-center justify-between px-4 py-3 gap-2 flex-wrap" style={{ borderBottom: "1px solid #1E2A40" }}>
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid #1E2A40" }}>
               <div className="flex items-center gap-1">
                 {INTERVALS.map((opt) => (
                   <button
                     key={opt.label}
                     onClick={() => setSelectedInterval(opt)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold"
                     style={{
                       background: selectedInterval.label === opt.label ? "#00D897" : "transparent",
                       color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3",
@@ -284,34 +260,24 @@ export default function StockDetail() {
                 <button
                   onClick={() => setIsFullscreen(true)}
                   className="p-1.5 rounded-lg"
-                  style={{ background: "#1A2540", color: "#8B9CB3", border: "1px solid #1E2A40" }}
+                  style={{ background: "#1A2540", border: "1px solid #1E2A40" }}
                 >
-                  <Maximize2 className="h-3.5 w-3.5" />
+                  <Maximize2 className="h-3.5 w-3.5" style={{ color: "#8B9CB3" }} />
                 </button>
               </div>
             </div>
-            <div className="p-3">
-              {chartIframe}
-            </div>
+            <div className="p-3">{chart}</div>
           </div>
 
+          {/* Buy/Sell */}
           <div className="flex gap-3">
-            <button
-              className="flex-1 h-12 rounded-xl text-base font-bold"
-              style={{ background: "#00D897", color: "#0A0E1A" }}
-              onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
-            >
-              Buy
-            </button>
-            <button
-              className="flex-1 h-12 rounded-xl text-base font-bold"
-              style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
-              onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
-            >
-              Sell
-            </button>
+            <button className="flex-1 h-12 rounded-xl text-base font-bold" style={{ background: "#00D897", color: "#0A0E1A" }}
+              onClick={() => { setTradeType("buy"); setTradeOpen(true); }}>Buy</button>
+            <button className="flex-1 h-12 rounded-xl text-base font-bold" style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
+              onClick={() => { setTradeType("sell"); setTradeOpen(true); }}>Sell</button>
           </div>
 
+          {/* News */}
           {newsData?.articles && newsData.articles.length > 0 && (
             <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
               <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
@@ -324,13 +290,10 @@ export default function StockDetail() {
                     <p className="text-sm font-medium text-white leading-snug line-clamp-2">{article.title}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-xs" style={{ color: "#8B9CB3" }}>{article.source}</span>
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                        style={{
-                          background: article.sentiment === "positive" ? "rgba(0,216,151,0.15)" : article.sentiment === "negative" ? "rgba(255,71,87,0.15)" : "#1A2540",
-                          color: article.sentiment === "positive" ? "#00D897" : article.sentiment === "negative" ? "#FF4757" : "#8B9CB3",
-                        }}>
-                        {article.sentiment}
-                      </span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{
+                        background: article.sentiment === "positive" ? "rgba(0,216,151,0.15)" : article.sentiment === "negative" ? "rgba(255,71,87,0.15)" : "#1A2540",
+                        color: article.sentiment === "positive" ? "#00D897" : article.sentiment === "negative" ? "#FF4757" : "#8B9CB3",
+                      }}>{article.sentiment}</span>
                     </div>
                   </a>
                 ))}
@@ -340,11 +303,10 @@ export default function StockDetail() {
         </div>
       </div>
 
+      {/* Trade Dialog */}
       <Dialog open={tradeOpen} onOpenChange={setTradeOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{tradeType === "buy" ? "Buy" : "Sell"} {ticker}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{tradeType === "buy" ? "Buy" : "Sell"} {ticker}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="flex justify-between text-sm p-3 rounded-lg" style={{ background: "#1A2540" }}>
               <span style={{ color: "#8B9CB3" }}>Current Price</span>
@@ -360,12 +322,8 @@ export default function StockDetail() {
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setTradeOpen(false)}>Cancel</Button>
-              <Button
-                className="flex-1 font-bold"
-                style={{ background: tradeType === "buy" ? "#00D897" : "#FF4757", color: tradeType === "buy" ? "#0A0E1A" : "white" }}
-                onClick={handleTrade}
-                disabled={executeTrade.isPending}
-              >
+              <Button className="flex-1 font-bold" style={{ background: tradeType === "buy" ? "#00D897" : "#FF4757", color: tradeType === "buy" ? "#0A0E1A" : "white" }}
+                onClick={handleTrade} disabled={executeTrade.isPending}>
                 {executeTrade.isPending ? "Processing…" : `Confirm ${tradeType === "buy" ? "Buy" : "Sell"}`}
               </Button>
             </div>
@@ -373,6 +331,7 @@ export default function StockDetail() {
         </DialogContent>
       </Dialog>
 
+      {/* AI Analysis Dialog */}
       <Dialog open={analysisOpen} onOpenChange={setAnalysisOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -383,7 +342,7 @@ export default function StockDetail() {
           </DialogHeader>
           {analyzeChart.isPending ? (
             <div className="space-y-3 py-4">
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-5 w-full" />)}
+              {[1,2,3,4].map((i) => <Skeleton key={i} className="h-5 w-full" />)}
             </div>
           ) : analyzeChart.data ? (
             <div className="space-y-4 py-2">
@@ -392,9 +351,7 @@ export default function StockDetail() {
                   background: analyzeChart.data.signal === "bullish" ? "rgba(0,216,151,0.15)" : analyzeChart.data.signal === "bearish" ? "rgba(255,71,87,0.15)" : "rgba(245,158,11,0.15)",
                   color: analyzeChart.data.signal === "bullish" ? "#00D897" : analyzeChart.data.signal === "bearish" ? "#FF4757" : "#F59E0B",
                   border: "none",
-                }}>
-                  {analyzeChart.data.signal.toUpperCase()}
-                </Badge>
+                }}>{analyzeChart.data.signal.toUpperCase()}</Badge>
                 <Badge variant="outline">{analyzeChart.data.confidence}% confidence</Badge>
                 <Badge variant="outline" className="capitalize">Risk: {analyzeChart.data.risk}</Badge>
               </div>
@@ -408,4 +365,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-}            
+         }

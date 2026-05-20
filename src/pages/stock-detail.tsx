@@ -172,7 +172,17 @@ export default function StockDetail() {
               <Minimize2 className="h-4 w-4 text-white" />
             </button>
           </div>
-          <div className="flex-1">{chart}</div>
+          <div className="flex-1 overflow-hidden">{chart}</div>
+          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2" style={{ height: "60px", background: "#0F1629", borderTop: "1px solid #1E2A40" }}>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white">{quote?.symbol ?? ticker}</p>
+              <p className="text-xs" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
+                {formatCurrency(quote?.price ?? 0)} {isPositive ? "▲" : "▼"} {formatPercent(Math.abs(quote?.changePercent ?? 0))}
+              </p>
+            </div>
+            <button onClick={() => { setTradeType("buy"); setTradeOpen(true); }} className="px-5 py-2 rounded-xl text-sm font-bold" style={{ background: "#00D897", color: "#0A0E1A" }}>Buy</button>
+            <button onClick={() => { setTradeType("sell"); setTradeOpen(true); }} className="px-5 py-2 rounded-xl text-sm font-bold" style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}>Sell</button>
+          </div>
         </div>
       )}
 
@@ -210,10 +220,10 @@ export default function StockDetail() {
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #1E2A40" }}>
               {[
-                { label: "Open",       value: quote?.open          ? formatCurrency(quote.open)          : "—" },
-                { label: "Prev Close", value: quote?.previousClose  ? formatCurrency(quote.previousClose) : "—" },
-                { label: "52W High",   value: quote?.high52w        ? formatCurrency(quote.high52w)       : "—", color: "#00D897" },
-                { label: "52W Low",    value: quote?.low52w         ? formatCurrency(quote.low52w)        : "—", color: "#FF4757" },
+                { label: "Open",       value: quote?.open         ? formatCurrency(quote.open)         : "—" },
+                { label: "Prev Close", value: quote?.previousClose ? formatCurrency(quote.previousClose): "—" },
+                { label: "52W High",   value: quote?.high52w       ? formatCurrency(quote.high52w)      : "—", color: "#00D897" },
+                { label: "52W Low",    value: quote?.low52w        ? formatCurrency(quote.low52w)       : "—", color: "#FF4757" },
               ].map((s) => (
                 <div key={s.label}>
                   <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>{s.label}</p>
@@ -231,7 +241,7 @@ export default function StockDetail() {
 
           {/* Chart */}
           <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid #1E2A40" }}>
+            <div className="flex items-center justify-between px-4 py-3 gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
               <div className="flex items-center gap-1">
                 {INTERVALS.map((opt) => (
                   <button
@@ -257,11 +267,7 @@ export default function StockDetail() {
                   <BrainCircuit className="h-3.5 w-3.5" />
                   {analyzeChart.isPending ? "Analyzing…" : "AI Analysis"}
                 </button>
-                <button
-                  onClick={() => setIsFullscreen(true)}
-                  className="p-1.5 rounded-lg"
-                  style={{ background: "#1A2540", border: "1px solid #1E2A40" }}
-                >
+                <button onClick={() => setIsFullscreen(true)} className="p-1.5 rounded-lg" style={{ background: "#1A2540", border: "1px solid #1E2A40" }}>
                   <Maximize2 className="h-3.5 w-3.5" style={{ color: "#8B9CB3" }} />
                 </button>
               </div>
@@ -365,4 +371,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-         }
+                      }  

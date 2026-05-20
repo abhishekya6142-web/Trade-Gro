@@ -74,7 +74,7 @@ export default function StockDetail() {
   const isPositive = (quote?.change ?? 0) >= 0;
   const ticker = symbol.replace(".NS", "").replace(".BO", "").replace(".KS", "");
   const exchange = symbol.endsWith(".BO") ? "BSE" : "NSE";
-const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
+  const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
 
   const handleTrade = () => {
     const shares = parseInt(tradeShares);
@@ -128,11 +128,8 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
 
   return (
     <>
-      {/* FULLSCREEN OVERLAY */}
       {isFullscreen && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0A0E1A" }}>
-
-          {/* Top toolbar */}
           <div
             className="flex items-center justify-between px-4 py-2 flex-shrink-0"
             style={{ borderBottom: "1px solid #1E2A40" }}
@@ -161,19 +158,13 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
             </button>
           </div>
 
-          {/* Chart */}
           <div className="flex-1 overflow-hidden" style={{ marginBottom: "60px" }}>
             {chartIframe}
           </div>
 
-          {/* Bottom bar — Buy / Sell / Exit */}
           <div
             className="flex-shrink-0 flex items-center gap-2 px-4 py-2"
-            style={{
-              height: "60px",
-              background: "#0F1629",
-              borderTop: "1px solid #1E2A40",
-            }}
+            style={{ height: "60px", background: "#0F1629", borderTop: "1px solid #1E2A40" }}
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white">{quote?.symbol ?? ticker}</p>
@@ -182,7 +173,6 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
                 {isPositive ? "▲" : "▼"} {formatPercent(Math.abs(quote?.changePercent ?? 0))}
               </p>
             </div>
-
             <button
               onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
               className="px-5 py-2 rounded-xl text-sm font-bold"
@@ -190,7 +180,6 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
             >
               Buy
             </button>
-
             <button
               onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
               className="px-5 py-2 rounded-xl text-sm font-bold"
@@ -198,7 +187,6 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
             >
               Sell
             </button>
-
             <button
               onClick={() => setIsFullscreen(false)}
               className="p-2 rounded-xl"
@@ -207,15 +195,12 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
               <Minimize2 className="h-4 w-4" />
             </button>
           </div>
-
         </div>
       )}
 
-      {/* NORMAL PAGE */}
       <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
         <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
 
-          {/* Header */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setLocation("/markets")}
@@ -237,7 +222,6 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
             </div>
           </div>
 
-          {/* Price Hero */}
           <div className="rounded-2xl p-4" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
               <>
@@ -270,7 +254,6 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
             )}
           </div>
 
-          {/* Chart Card */}
           <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             <div className="flex items-center justify-between px-4 py-3 gap-2 flex-wrap" style={{ borderBottom: "1px solid #1E2A40" }}>
               <div className="flex items-center gap-1">
@@ -312,17 +295,16 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
             </div>
           </div>
 
-          {/* Buy / Sell */}
           <div className="flex gap-3">
             <button
-              className="flex-1 h-12 rounded-xl text-base font-bold transition-all hover:opacity-90"
+              className="flex-1 h-12 rounded-xl text-base font-bold"
               style={{ background: "#00D897", color: "#0A0E1A" }}
               onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
             >
               Buy
             </button>
             <button
-              className="flex-1 h-12 rounded-xl text-base font-bold transition-all hover:opacity-90"
+              className="flex-1 h-12 rounded-xl text-base font-bold"
               style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
               onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
             >
@@ -330,7 +312,6 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
             </button>
           </div>
 
-          {/* News */}
           {newsData?.articles && newsData.articles.length > 0 && (
             <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
               <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
@@ -339,25 +320,15 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
               </div>
               <div className="divide-y" style={{ borderColor: "#1E2A40" }}>
                 {newsData.articles.slice(0, 4).map((article) => (
-                  <a
-                    key={article.id}
-                    href={article.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block px-4 py-3 hover:opacity-80 transition-opacity"
-                  >
+                  <a key={article.id} href={article.url} target="_blank" rel="noopener noreferrer" className="block px-4 py-3 hover:opacity-80">
                     <p className="text-sm font-medium text-white leading-snug line-clamp-2">{article.title}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-xs" style={{ color: "#8B9CB3" }}>{article.source}</span>
-                      <span
-                        className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
                         style={{
-                          background: article.sentiment === "positive" ? "rgba(0,216,151,0.15)"
-                            : article.sentiment === "negative" ? "rgba(255,71,87,0.15)" : "#1A2540",
-                          color: article.sentiment === "positive" ? "#00D897"
-                            : article.sentiment === "negative" ? "#FF4757" : "#8B9CB3",
-                        }}
-                      >
+                          background: article.sentiment === "positive" ? "rgba(0,216,151,0.15)" : article.sentiment === "negative" ? "rgba(255,71,87,0.15)" : "#1A2540",
+                          color: article.sentiment === "positive" ? "#00D897" : article.sentiment === "negative" ? "#FF4757" : "#8B9CB3",
+                        }}>
                         {article.sentiment}
                       </span>
                     </div>
@@ -366,11 +337,9 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
               </div>
             </div>
           )}
-
         </div>
       </div>
 
-      {/* Trade Dialog */}
       <Dialog open={tradeOpen} onOpenChange={setTradeOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -383,13 +352,7 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-white">Number of Shares</label>
-              <Input
-                type="number"
-                min="1"
-                value={tradeShares}
-                onChange={(e) => setTradeShares(e.target.value)}
-                className="h-12"
-              />
+              <Input type="number" min="1" value={tradeShares} onChange={(e) => setTradeShares(e.target.value)} className="h-12" />
             </div>
             <div className="flex justify-between text-sm p-3 rounded-lg border" style={{ borderColor: "#1E2A40" }}>
               <span className="text-white">Total Value</span>
@@ -410,7 +373,6 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
         </DialogContent>
       </Dialog>
 
-      {/* AI Analysis Dialog */}
       <Dialog open={analysisOpen} onOpenChange={setAnalysisOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -421,19 +383,16 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
           </DialogHeader>
           {analyzeChart.isPending ? (
             <div className="space-y-3 py-4">
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-5 w-full" style={{ animationDelay: `${i * 100}ms` }} />)}
+              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-5 w-full" />)}
             </div>
           ) : analyzeChart.data ? (
             <div className="space-y-4 py-2">
               <div className="flex flex-wrap gap-2">
-                <Badge
-                  className="text-sm font-semibold"
-                  style={{
-                    background: analyzeChart.data.signal === "bullish" ? "rgba(0,216,151,0.15)" : analyzeChart.data.signal === "bearish" ? "rgba(255,71,87,0.15)" : "rgba(245,158,11,0.15)",
-                    color: analyzeChart.data.signal === "bullish" ? "#00D897" : analyzeChart.data.signal === "bearish" ? "#FF4757" : "#F59E0B",
-                    border: "none",
-                  }}
-                >
+                <Badge className="text-sm font-semibold" style={{
+                  background: analyzeChart.data.signal === "bullish" ? "rgba(0,216,151,0.15)" : analyzeChart.data.signal === "bearish" ? "rgba(255,71,87,0.15)" : "rgba(245,158,11,0.15)",
+                  color: analyzeChart.data.signal === "bullish" ? "#00D897" : analyzeChart.data.signal === "bearish" ? "#FF4757" : "#F59E0B",
+                  border: "none",
+                }}>
                   {analyzeChart.data.signal.toUpperCase()}
                 </Badge>
                 <Badge variant="outline">{analyzeChart.data.confidence}% confidence</Badge>
@@ -449,4 +408,4 @@ const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
       </Dialog>
     </>
   );
-}
+}            

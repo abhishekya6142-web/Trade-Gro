@@ -1,5 +1,5 @@
-   import { useEffect, useRef } from "react";
-import { createChart, ColorType, CandlestickSeries } from "lightweight-charts";
+import { useEffect, useRef } from "react";
+import { createChart, ColorType, CandlestickSeries, HistogramSeries } from "lightweight-charts";
 import { Candle } from "@workspace/api-client-react";
 
 interface CandlestickChartProps {
@@ -8,7 +8,6 @@ interface CandlestickChartProps {
 
 export function CandlestickChart({ data }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<any>(null);
 
   useEffect(() => {
     if (!containerRef.current || !data.length) return;
@@ -26,9 +25,7 @@ export function CandlestickChart({ data }: CandlestickChartProps) {
         vertLine: { color: "#8B9CB3", labelBackgroundColor: "#1E2A40" },
         horzLine: { color: "#8B9CB3", labelBackgroundColor: "#1E2A40" },
       },
-      rightPriceScale: {
-        borderColor: "#1E2A40",
-      },
+      rightPriceScale: { borderColor: "#1E2A40" },
       timeScale: {
         borderColor: "#1E2A40",
         timeVisible: true,
@@ -38,9 +35,6 @@ export function CandlestickChart({ data }: CandlestickChartProps) {
       height: 400,
     });
 
-    chartRef.current = chart;
-
-    // Candlestick series
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#00D897",
       downColor: "#FF4757",
@@ -50,21 +44,20 @@ export function CandlestickChart({ data }: CandlestickChartProps) {
       wickDownColor: "#FF4757",
     });
 
-    const chartData = data.map((c) => ({
-      time: c.time as any,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    candleSeries.setData(
+      data.map((c) => ({
+        time: c.time as any,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }))
+    );
 
-    candleSeries.setData(chartData);
-
-    // Volume series
-    const volumeSeries = chart.addSeries(CandlestickSeries, {
+    const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
-    } as any);
+    });
 
     chart.priceScale("volume").applyOptions({
       scaleMargins: { top: 0.85, bottom: 0 },
@@ -75,12 +68,11 @@ export function CandlestickChart({ data }: CandlestickChartProps) {
         time: c.time as any,
         value: c.volume,
         color: c.close >= c.open ? "rgba(0,216,151,0.4)" : "rgba(255,71,87,0.4)",
-      })) as any
+      }))
     );
 
     chart.timeScale().fitContent();
 
-    // Resize observer
     const ro = new ResizeObserver(() => {
       if (containerRef.current) {
         chart.applyOptions({ width: containerRef.current.clientWidth });
@@ -100,4 +92,4 @@ export function CandlestickChart({ data }: CandlestickChartProps) {
       style={{ width: "100%", height: "400px", borderRadius: "12px", overflow: "hidden" }}
     />
   );
-}           
+}         

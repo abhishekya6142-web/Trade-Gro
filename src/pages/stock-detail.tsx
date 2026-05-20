@@ -73,7 +73,8 @@ export default function StockDetail() {
 
   const isPositive = (quote?.change ?? 0) >= 0;
   const ticker = symbol.replace(".NS", "").replace(".BO", "").replace(".KS", "");
-  const tvSymbol = encodeURIComponent(`NSE:${ticker}`);
+  const exchange = symbol.endsWith(".BO") ? "BSE" : "NSE";
+const tvSymbol = encodeURIComponent(`${exchange}:${ticker}`);
 
   const handleTrade = () => {
     const shares = parseInt(tradeShares);

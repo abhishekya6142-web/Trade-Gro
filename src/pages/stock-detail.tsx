@@ -116,7 +116,7 @@ export default function StockDetail() {
   const chartIframe = (
     <iframe
       key={`${tvSymbol}-${selectedInterval.tvInterval}`}
-      src={`https://s.tradingview.com/widgetembed/?symbol=${tvSymbol}&interval=${selectedInterval.tvInterval}&theme=dark&style=1&locale=en&allow_symbol_change=0&save_image=0&hide_top_toolbar=0`}
+      src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview&symbol=${tvSymbol}&interval=${selectedInterval.tvInterval}&theme=dark&style=1&locale=in&timezone=Asia%2FKolkata&hide_top_toolbar=0&hide_legend=0&allow_symbol_change=0`}
       width="100%"
       height={isFullscreen ? "100%" : "450"}
       frameBorder="0"

@@ -1,6 +1,4 @@
-import { CandlestickChart } from "@/components/CandlestickChart";
-import { useGetStockHistory, getGetStockHistoryQueryKey } from "@workspace/api-client-react";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetStockQuote,
@@ -74,11 +72,7 @@ export default function StockDetail() {
   const analyzeChart = useAnalyzeChart();
 
   const isPositive = (quote?.change ?? 0) >= 0;
-
-  // ticker: RELIANCE.NS → RELIANCE
   const ticker = symbol.replace(".NS", "").replace(".BO", "").replace(".KS", "");
-
-  // TradingView NSE symbol — encode properly
   const tvSymbol = encodeURIComponent(`NSE:${ticker}`);
 
   const handleTrade = () => {
@@ -133,14 +127,15 @@ export default function StockDetail() {
 
   return (
     <>
-      {/* Fullscreen overlay */}
+      {/* FULLSCREEN OVERLAY */}
       {isFullscreen && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col"
-          style={{ background: "#0A0E1A" }}
-        >
-          {/* Fullscreen toolbar */}
-          <div className="flex items-center justify-between px-4 py-2 flex-shrink-0" style={{ borderBottom: "1px solid #1E2A40" }}>
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0A0E1A" }}>
+
+          {/* Top toolbar */}
+          <div
+            className="flex items-center justify-between px-4 py-2 flex-shrink-0"
+            style={{ borderBottom: "1px solid #1E2A40" }}
+          >
             <div className="flex items-center gap-1">
               {INTERVALS.map((opt) => (
                 <button
@@ -164,70 +159,58 @@ export default function StockDetail() {
               <Minimize2 className="h-4 w-4" />
             </button>
           </div>
-          {/* Chart fills remaining space — 60px bottom gap for navbar */}
-<div
-  className="flex-1 overflow-hidden"
-  style={{ marginBottom: "60px" }}
->
-  {chartIframe}
-</div>
 
-{/* Bottom bar — sits above navbar */}
-<div
-  className="flex-shrink-0 flex items-center justify-between px-4 py-2"
-  style={{
-    height: "60px",
-    background: "#0F1629",
-    borderTop: "1px solid #1E2A40",
-  }}
->
-  <div
-  className="flex-shrink-0 flex items-center gap-2 px-4 py-2"
-  style={{
-    height: "60px",
-    background: "#0F1629",
-    borderTop: "1px solid #1E2A40",
-  }}
->
-  {/* Price info */}
-  <div className="flex-1 min-w-0">
-    <p className="text-sm font-bold text-white">{quote?.symbol ?? ticker}</p>
-    <p className="text-xs" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
-      {formatCurrency(quote?.price ?? 0)} &nbsp;
-      {isPositive ? "▲" : "▼"} {formatPercent(Math.abs(quote?.changePercent ?? 0))}
-    </p>
-  </div>
+          {/* Chart */}
+          <div className="flex-1 overflow-hidden" style={{ marginBottom: "60px" }}>
+            {chartIframe}
+          </div>
 
-  {/* Buy button */}
-  <button
-    onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
-    className="px-5 py-2 rounded-xl text-sm font-bold"
-    style={{ background: "#00D897", color: "#0A0E1A" }}
-  >
-    Buy
-  </button>
+          {/* Bottom bar — Buy / Sell / Exit */}
+          <div
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2"
+            style={{
+              height: "60px",
+              background: "#0F1629",
+              borderTop: "1px solid #1E2A40",
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white">{quote?.symbol ?? ticker}</p>
+              <p className="text-xs" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
+                {formatCurrency(quote?.price ?? 0)}&nbsp;
+                {isPositive ? "▲" : "▼"} {formatPercent(Math.abs(quote?.changePercent ?? 0))}
+              </p>
+            </div>
 
-  {/* Sell button */}
-  <button
-    onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
-    className="px-5 py-2 rounded-xl text-sm font-bold"
-    style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
-  >
-    Sell
-  </button>
+            <button
+              onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
+              className="px-5 py-2 rounded-xl text-sm font-bold"
+              style={{ background: "#00D897", color: "#0A0E1A" }}
+            >
+              Buy
+            </button>
 
-  {/* Exit */}
-  <button
-    onClick={() => setIsFullscreen(false)}
-    className="p-2 rounded-xl"
-    style={{ background: "#1A2540", color: "#8B9CB3" }}
-  >
-    <Minimize2 className="h-4 w-4" />
-  </button>
-</div>
+            <button
+              onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
+              className="px-5 py-2 rounded-xl text-sm font-bold"
+              style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
+            >
+              Sell
+            </button>
+
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="p-2 rounded-xl"
+              style={{ background: "#1A2540", color: "#8B9CB3" }}
+            >
+              <Minimize2 className="h-4 w-4" />
+            </button>
+          </div>
+
         </div>
       )}
 
+      {/* NORMAL PAGE */}
       <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
         <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
 
@@ -267,10 +250,10 @@ export default function StockDetail() {
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #1E2A40" }}>
               {[
-                { label: "Open",       value: quote?.open          ? formatCurrency(quote.open)          : "—" },
-                { label: "Prev Close", value: quote?.previousClose  ? formatCurrency(quote.previousClose) : "—" },
-                { label: "52W High",   value: quote?.high52w        ? formatCurrency(quote.high52w)       : "—", color: "#00D897" },
-                { label: "52W Low",    value: quote?.low52w         ? formatCurrency(quote.low52w)        : "—", color: "#FF4757" },
+                { label: "Open",       value: quote?.open         ? formatCurrency(quote.open)          : "—" },
+                { label: "Prev Close", value: quote?.previousClose ? formatCurrency(quote.previousClose) : "—" },
+                { label: "52W High",   value: quote?.high52w       ? formatCurrency(quote.high52w)       : "—", color: "#00D897" },
+                { label: "52W Low",    value: quote?.low52w        ? formatCurrency(quote.low52w)        : "—", color: "#FF4757" },
               ].map((s) => (
                 <div key={s.label}>
                   <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>{s.label}</p>
@@ -288,7 +271,6 @@ export default function StockDetail() {
 
           {/* Chart Card */}
           <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-            {/* Toolbar */}
             <div className="flex items-center justify-between px-4 py-3 gap-2 flex-wrap" style={{ borderBottom: "1px solid #1E2A40" }}>
               <div className="flex items-center gap-1">
                 {INTERVALS.map((opt) => (
@@ -324,8 +306,6 @@ export default function StockDetail() {
                 </button>
               </div>
             </div>
-
-            {/* Chart */}
             <div className="p-3">
               {chartIframe}
             </div>
@@ -385,6 +365,7 @@ export default function StockDetail() {
               </div>
             </div>
           )}
+
         </div>
       </div>
 
@@ -467,4 +448,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-                                                   }                          
+}

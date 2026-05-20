@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { createChart, ColorType, CandlestickSeries, HistogramSeries } from "lightweight-charts";
+import { createChart, ColorType } from "lightweight-charts";
 import { Candle } from "@workspace/api-client-react";
 
 interface CandlestickChartProps {
@@ -35,7 +35,7 @@ export function CandlestickChart({ data }: CandlestickChartProps) {
       height: 400,
     });
 
-    const candleSeries = chart.addSeries(CandlestickSeries, {
+    const candleSeries = chart.addCandlestickSeries({
       upColor: "#00D897",
       downColor: "#FF4757",
       borderUpColor: "#00D897",
@@ -54,7 +54,7 @@ export function CandlestickChart({ data }: CandlestickChartProps) {
       }))
     );
 
-    const volumeSeries = chart.addSeries(HistogramSeries, {
+    const volumeSeries = chart.addHistogramSeries({
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
     });

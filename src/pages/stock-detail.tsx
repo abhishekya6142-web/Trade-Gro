@@ -2,12 +2,10 @@ import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetStockQuote,
-  useGetStockHistory,
   useGetNews,
   useExecuteTrade,
   useAnalyzeChart,
   getGetStockQuoteQueryKey,
-  getGetStockHistoryQueryKey,
   getGetPortfolioQueryKey,
   getGetMeQueryKey,
   getGetTradesQueryKey,
@@ -17,31 +15,14 @@ import { formatCurrency, formatPercent } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  ArrowLeft,
-  BrainCircuit,
-  Newspaper,
-  Maximize2,
-  Minimize2,
-} from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowLeft, BrainCircuit, Newspaper, Maximize2, Minimize2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { CandlestickChart } from "@/components/CandlestickChart";
 import { useQueryClient } from "@tanstack/react-query";
+import { LightweightChart } from "@/components/LightweightChart";
 
-interface IntervalOption {
-  label: string;
-  interval: string;
-  range: string;
-}
+interface IntervalOption { label: string; interval: string; range: string; }
 
 const INTERVALS: IntervalOption[] = [
   { label: "15m", interval: "15m", range: "1d"  },
@@ -58,9 +39,7 @@ export default function StockDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [selectedInterval, setSelectedInterval] = useState<IntervalOption>(
-    INTERVALS.find((i) => i.label === "1D")!
-  );
+  const [selectedInterval, setSelectedInterval] = useState<IntervalOption>(INTERVALS.find((i) => i.label === "1D")!);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState("1");
@@ -70,21 +49,6 @@ export default function StockDetail() {
   const { data: quote, isLoading: quoteLoading } = useGetStockQuote(symbol, {
     query: { enabled: !!symbol, queryKey: getGetStockQuoteQueryKey(symbol) },
   });
-
-  const { data: history, isLoading: historyLoading } = useGetStockHistory(
-    symbol,
-    { interval: selectedInterval.interval as any, range: selectedInterval.range as any },
-    {
-      query: {
-        enabled: !!symbol,
-        queryKey: getGetStockHistoryQueryKey(symbol, {
-          interval: selectedInterval.interval as any,
-          range: selectedInterval.range as any,
-        }),
-      },
-    }
-  );
-
   const { data: newsData } = useGetNews({ symbol });
   const executeTrade = useExecuteTrade();
   const analyzeChart = useAnalyzeChart();
@@ -115,55 +79,32 @@ export default function StockDetail() {
             queryClient.invalidateQueries({ queryKey: getGetTradesQueryKey() });
           }
         },
-        onError: () => {
-          toast({ title: "Trade failed", description: "Something went wrong.", variant: "destructive" });
-        },
+        onError: () => toast({ title: "Trade failed", description: "Something went wrong.", variant: "destructive" }),
       }
     );
   };
 
   const handleAnalyze = () => {
-    if (!history?.candles?.length) {
-      toast({ title: "No chart data", variant: "destructive" });
-      return;
-    }
     setAnalysisOpen(true);
-    analyzeChart.mutate({ data: { symbol, candles: history.candles, interval: selectedInterval.interval } });
+    analyzeChart.mutate({ data: { symbol, candles: [], interval: selectedInterval.interval } });
   };
 
   const totalTradeValue = (parseInt(tradeShares) || 0) * (quote?.price ?? 0);
 
-  const chart = (
-    <div style={{ height: isFullscreen ? "100%" : "400px" }}>
-      {historyLoading ? (
-        <Skeleton className="w-full h-full rounded-xl" />
-      ) : history?.candles?.length ? (
-        <CandlestickChart data={history.candles} />
-      ) : (
-        <div className="flex items-center justify-center h-full text-sm" style={{ color: "#8B9CB3" }}>
-          No chart data available
-        </div>
-      )}
-    </div>
+  const chartEl = (h: number) => (
+    <LightweightChart symbol={symbol} interval={selectedInterval.interval} range={selectedInterval.range} height={h} />
   );
 
   return (
     <>
-      {/* Fullscreen */}
       {isFullscreen && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0A0E1A" }}>
           <div className="flex items-center justify-between px-4 py-2 flex-shrink-0" style={{ borderBottom: "1px solid #1E2A40" }}>
             <div className="flex items-center gap-1">
               {INTERVALS.map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => setSelectedInterval(opt)}
+                <button key={opt.label} onClick={() => setSelectedInterval(opt)}
                   className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-                  style={{
-                    background: selectedInterval.label === opt.label ? "#00D897" : "transparent",
-                    color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3",
-                  }}
-                >
+                  style={{ background: selectedInterval.label === opt.label ? "#00D897" : "transparent", color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3" }}>
                   {opt.label}
                 </button>
               ))}
@@ -172,7 +113,9 @@ export default function StockDetail() {
               <Minimize2 className="h-4 w-4 text-white" />
             </button>
           </div>
-          <div className="flex-1 overflow-hidden">{chart}</div>
+          <div className="flex-1 overflow-hidden">
+            {chartEl(window.innerHeight - 120)}
+          </div>
           <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2" style={{ height: "60px", background: "#0F1629", borderTop: "1px solid #1E2A40" }}>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white">{quote?.symbol ?? ticker}</p>
@@ -182,6 +125,9 @@ export default function StockDetail() {
             </div>
             <button onClick={() => { setTradeType("buy"); setTradeOpen(true); }} className="px-5 py-2 rounded-xl text-sm font-bold" style={{ background: "#00D897", color: "#0A0E1A" }}>Buy</button>
             <button onClick={() => { setTradeType("sell"); setTradeOpen(true); }} className="px-5 py-2 rounded-xl text-sm font-bold" style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}>Sell</button>
+            <button onClick={() => setIsFullscreen(false)} className="p-2 rounded-xl" style={{ background: "#1A2540" }}>
+              <Minimize2 className="h-4 w-4 text-white" />
+            </button>
           </div>
         </div>
       )}
@@ -189,7 +135,6 @@ export default function StockDetail() {
       <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
         <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
 
-          {/* Header */}
           <div className="flex items-center gap-3">
             <button onClick={() => setLocation("/markets")} className="p-2 rounded-xl" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
               <ArrowLeft className="h-4 w-4 text-white" />
@@ -198,16 +143,13 @@ export default function StockDetail() {
               {quoteLoading ? <Skeleton className="h-7 w-40" /> : (
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl font-bold text-white">{quote?.symbol ?? ticker}</h1>
-                  <Badge variant="outline" className="text-xs" style={{ borderColor: "#1E2A40", color: "#8B9CB3" }}>
-                    {quote?.sector ?? "Equity"}
-                  </Badge>
+                  <Badge variant="outline" className="text-xs" style={{ borderColor: "#1E2A40", color: "#8B9CB3" }}>{quote?.sector ?? "Equity"}</Badge>
                 </div>
               )}
               <p className="text-xs truncate mt-0.5" style={{ color: "#8B9CB3" }}>{quote?.name ?? symbol}</p>
             </div>
           </div>
 
-          {/* Price */}
           <div className="rounded-2xl p-4" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
               <>
@@ -239,31 +181,21 @@ export default function StockDetail() {
             )}
           </div>
 
-          {/* Chart */}
           <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             <div className="flex items-center justify-between px-4 py-3 gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
               <div className="flex items-center gap-1">
                 {INTERVALS.map((opt) => (
-                  <button
-                    key={opt.label}
-                    onClick={() => setSelectedInterval(opt)}
+                  <button key={opt.label} onClick={() => setSelectedInterval(opt)}
                     className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-                    style={{
-                      background: selectedInterval.label === opt.label ? "#00D897" : "transparent",
-                      color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3",
-                    }}
-                  >
+                    style={{ background: selectedInterval.label === opt.label ? "#00D897" : "transparent", color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3" }}>
                     {opt.label}
                   </button>
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleAnalyze}
-                  disabled={analyzeChart.isPending}
+                <button onClick={handleAnalyze} disabled={analyzeChart.isPending}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}
-                >
+                  style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}>
                   <BrainCircuit className="h-3.5 w-3.5" />
                   {analyzeChart.isPending ? "Analyzing…" : "AI Analysis"}
                 </button>
@@ -272,10 +204,9 @@ export default function StockDetail() {
                 </button>
               </div>
             </div>
-            <div className="p-3">{chart}</div>
+            <div className="p-3">{chartEl(400)}</div>
           </div>
 
-          {/* Buy/Sell */}
           <div className="flex gap-3">
             <button className="flex-1 h-12 rounded-xl text-base font-bold" style={{ background: "#00D897", color: "#0A0E1A" }}
               onClick={() => { setTradeType("buy"); setTradeOpen(true); }}>Buy</button>
@@ -283,7 +214,6 @@ export default function StockDetail() {
               onClick={() => { setTradeType("sell"); setTradeOpen(true); }}>Sell</button>
           </div>
 
-          {/* News */}
           {newsData?.articles && newsData.articles.length > 0 && (
             <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
               <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
@@ -309,7 +239,6 @@ export default function StockDetail() {
         </div>
       </div>
 
-      {/* Trade Dialog */}
       <Dialog open={tradeOpen} onOpenChange={setTradeOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{tradeType === "buy" ? "Buy" : "Sell"} {ticker}</DialogTitle></DialogHeader>
@@ -337,7 +266,6 @@ export default function StockDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* AI Analysis Dialog */}
       <Dialog open={analysisOpen} onOpenChange={setAnalysisOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -347,16 +275,13 @@ export default function StockDetail() {
             </DialogTitle>
           </DialogHeader>
           {analyzeChart.isPending ? (
-            <div className="space-y-3 py-4">
-              {[1,2,3,4].map((i) => <Skeleton key={i} className="h-5 w-full" />)}
-            </div>
+            <div className="space-y-3 py-4">{[1,2,3,4].map((i) => <Skeleton key={i} className="h-5 w-full" />)}</div>
           ) : analyzeChart.data ? (
             <div className="space-y-4 py-2">
               <div className="flex flex-wrap gap-2">
                 <Badge className="text-sm font-semibold" style={{
                   background: analyzeChart.data.signal === "bullish" ? "rgba(0,216,151,0.15)" : analyzeChart.data.signal === "bearish" ? "rgba(255,71,87,0.15)" : "rgba(245,158,11,0.15)",
-                  color: analyzeChart.data.signal === "bullish" ? "#00D897" : analyzeChart.data.signal === "bearish" ? "#FF4757" : "#F59E0B",
-                  border: "none",
+                  color: analyzeChart.data.signal === "bullish" ? "#00D897" : analyzeChart.data.signal === "bearish" ? "#FF4757" : "#F59E0B", border: "none",
                 }}>{analyzeChart.data.signal.toUpperCase()}</Badge>
                 <Badge variant="outline">{analyzeChart.data.confidence}% confidence</Badge>
                 <Badge variant="outline" className="capitalize">Risk: {analyzeChart.data.risk}</Badge>
@@ -371,4 +296,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-                      }  
+    }  

@@ -28,8 +28,8 @@ interface IntervalOption { label: string; interval: string; range: string; }
 const INTERVALS: IntervalOption[] = [
   { label: "15m", interval: "15m", range: "60d"  },
   { label: "1h",  interval: "60m", range: "730d" },
-  { label: "1D",  interval: "1d",  range: "10y"  },
-  { label: "1W",  interval: "1wk", range: "20y"  },
+  { label: "1D",  interval: "1d",  range: "max"  },
+  { label: "1W",  interval: "1wk", range: "max"  },
   { label: "1M",  interval: "1mo", range: "max"  },
 ];
 

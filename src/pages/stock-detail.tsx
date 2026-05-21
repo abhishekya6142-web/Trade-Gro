@@ -26,11 +26,11 @@ import { LightweightChart } from "@/components/LightweightChart";
 interface IntervalOption { label: string; interval: string; range: string; }
 
 const INTERVALS: IntervalOption[] = [
-  { label: "15m", interval: "15m", range: "1d"  },
-  { label: "1h",  interval: "60m", range: "5d"  },
-  { label: "1D",  interval: "1d",  range: "1mo" },
-  { label: "1W",  interval: "1d",  range: "3mo" },
-  { label: "1M",  interval: "1wk", range: "6mo" },
+  { label: "15m", interval: "15m", range: "5d"  },
+  { label: "1h",  interval: "60m", range: "1mo" },
+  { label: "1D",  interval: "1d",  range: "1y"  },
+  { label: "1W",  interval: "1wk", range: "5y"  },
+  { label: "1M",  interval: "1mo", range: "10y" },
 ];
 
 export default function StockDetail() {

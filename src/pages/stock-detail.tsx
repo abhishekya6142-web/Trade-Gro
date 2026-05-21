@@ -91,10 +91,6 @@ export default function StockDetail() {
 
   const totalTradeValue = (parseInt(tradeShares) || 0) * (quote?.price ?? 0);
 
-  const chartEl = (h: number) => (
-    <LightweightChart symbol={symbol} interval={selectedInterval.interval} range={selectedInterval.range} height={h} />
-  );
-
   return (
     <>
       {isFullscreen && (
@@ -114,7 +110,7 @@ export default function StockDetail() {
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            {chartEl(window.innerHeight - 120)}
+            <LightweightChart symbol={symbol} interval={selectedInterval.interval} range={selectedInterval.range} height={window.innerHeight - 120} />
           </div>
           <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2" style={{ height: "60px", background: "#0F1629", borderTop: "1px solid #1E2A40" }}>
             <div className="flex-1 min-w-0">
@@ -204,7 +200,9 @@ export default function StockDetail() {
                 </button>
               </div>
             </div>
-            <div className="p-3">{chartEl(400)}</div>
+            <div className="p-3">
+              <LightweightChart symbol={symbol} interval={selectedInterval.interval} range={selectedInterval.range} height={400} />
+            </div>
           </div>
 
           <div className="flex gap-3">
@@ -296,4 +294,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-    }  
+    }      

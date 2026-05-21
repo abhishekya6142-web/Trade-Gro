@@ -41,23 +41,11 @@ export function LightweightChart({ symbol, interval, range, height = 400 }: Prop
     const fetchData = async () => {
       try {
         const res = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`,
-          { headers: { "User-Agent": "Mozilla/5.0" } }
+          `/api/stocks/history/${symbol}?interval=${interval}&range=${range}`
         );
         const json = await res.json();
-        const result = json?.chart?.result?.[0];
-        if (!result) return;
-        const timestamps: number[] = result.timestamp;
-        const ohlcv = result.indicators.quote[0];
-        const candles = timestamps
-          .map((ts: number, i: number) => ({
-            time: ts as any,
-            open: ohlcv.open[i],
-            high: ohlcv.high[i],
-            low: ohlcv.low[i],
-            close: ohlcv.close[i],
-          }))
-          .filter((c: any) => c.open && c.high && c.low && c.close);
+        const candles = json?.candles;
+        if (!candles?.length) return;
         candleSeries.setData(candles);
         chart.timeScale().fitContent();
       } catch (err) {
@@ -82,4 +70,3 @@ export function LightweightChart({ symbol, interval, range, height = 400 }: Prop
 
   return <div ref={chartContainerRef} style={{ width: "100%", height: `${height}px` }} />;
 }
-    

@@ -6,9 +6,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rawSymbol = req.query.symbol;
   const symbol = Array.isArray(rawSymbol) ? rawSymbol[0] : rawSymbol ?? '';
   const interval = Array.isArray(req.query.interval) ? req.query.interval[0] : req.query.interval ?? '1d';
-  const range = Array.isArray(req.query.range) ? req.query.range[0] : req.query.range ?? '1mo';
+  const range = Array.isArray(req.query.range) ? req.query.range[0] : req.query.range ?? '1y';
 
-  // Symbol mein .NS nahi hai toh add karo Indian stocks ke liye
   const finalSymbol = symbol.includes('.') ? symbol : `${symbol}.NS`;
 
   try {

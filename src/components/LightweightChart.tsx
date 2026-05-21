@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { createChart, ColorType, CandlestickSeries } from "lightweight-charts";
+import { createChart, ColorType } from "lightweight-charts";
 
 interface Props {
   symbol: string;
@@ -29,7 +29,7 @@ export function LightweightChart({ symbol, interval, range, height = 400 }: Prop
       height: height,
     });
 
-    const candleSeries = chart.addSeries(CandlestickSeries, {
+    const candleSeries = chart.addCandlestickSeries({
       upColor: "#00D897",
       downColor: "#FF4757",
       borderUpColor: "#00D897",
@@ -81,4 +81,5 @@ export function LightweightChart({ symbol, interval, range, height = 400 }: Prop
   }, [symbol, interval, range, height]);
 
   return <div ref={chartContainerRef} style={{ width: "100%", height: `${height}px` }} />;
-                  }
+}
+    

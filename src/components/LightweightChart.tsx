@@ -20,6 +20,7 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
   const drawStart = useRef<{x:number;y:number}|null>(null);
   const [, forceUpdate] = useState(0);
   const candleSeriesRef = useRef<any>(null);
+  const lastCandleRef = useRef<any>(null);
 
   const calcRSI = (closes: number[], period = 14): (number | null)[] => {
     const rsi: (number | null)[] = new Array(closes.length).fill(null);
@@ -123,16 +124,7 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
         if (isInitial) {
           candleSeries.setData(candles);
           chart.timeScale().fitContent();
-        } else {
-          // Sirf last candle update karo
-          const last = candles[candles.length - 1];
-          candleSeries.update({
-            time: last.time,
-            open: last.open,
-            high: last.high,
-            low: last.low,
-            close: last.close,
-          });
+          lastCandleRef.current = candles[candles.length - 1];
         }
 
         if (showRSI && rsiSeries) {
@@ -160,10 +152,37 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
       }
     };
 
-    fetchData(true);
+    // Real-time: sirf price fetch karke last candle update karo
+    const refreshPrice = async () => {
+      try {
+        const last = lastCandleRef.current;
+        if (!last) return;
+        const res = await fetch(`/api/stocks/${symbol}`);
+        const json = await res.json();
+        if (!json?.price) return;
+        const newClose = json.price;
+        // Same timestamp — last candle update karo, naya nahi banega
+        candleSeries.update({
+          time: last.time,
+          open: last.open,
+          high: Math.max(last.high, newClose),
+          low: Math.min(last.low, newClose),
+          close: newClose,
+        });
+        // lastCandle update karo
+        lastCandleRef.current = {
+          ...last,
+          high: Math.max(last.high, newClose),
+          low: Math.min(last.low, newClose),
+          close: newClose,
+        };
+      } catch (err) {
+        console.error("Price refresh error:", err);
+      }
+    };
 
-    // Real-time: har 5 second mein last candle update
-    const refreshTimer = setInterval(() => fetchData(false), 5000);
+    fetchData(true);
+    const refreshTimer = setInterval(refreshPrice, 5000);
 
     const handleResize = () => {
       const w2 = container.offsetWidth || window.innerWidth - 48;
@@ -230,4 +249,4 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
       )}
     </div>
   );
-}
+      }

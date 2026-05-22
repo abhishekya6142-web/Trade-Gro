@@ -1,4 +1,4 @@
- import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType } from "lightweight-charts";
 
 interface Props {
@@ -19,6 +19,7 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
   const isDrawing = useRef(false);
   const drawStart = useRef<{x:number;y:number}|null>(null);
   const [, forceUpdate] = useState(0);
+  const candleSeriesRef = useRef<any>(null);
 
   const calcRSI = (closes: number[], period = 14): (number | null)[] => {
     const rsi: (number | null)[] = new Array(closes.length).fill(null);
@@ -91,11 +92,14 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
       width: w,
       height: height,
     });
+
     const candleSeries = chart.addCandlestickSeries({
       upColor: "#00D897", downColor: "#FF4757",
       borderUpColor: "#00D897", borderDownColor: "#FF4757",
       wickUpColor: "#00D897", wickDownColor: "#FF4757",
     });
+    candleSeriesRef.current = candleSeries;
+
     let rsiSeries: any = null;
     if (showRSI) {
       rsiSeries = chart.addLineSeries({
@@ -107,15 +111,30 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
         borderColor: "#1E2A40",
       });
     }
-    const fetchData = async () => {
+
+    const fetchData = async (isInitial = false) => {
       try {
-        setLoading(true);
+        if (isInitial) setLoading(true);
         const res = await fetch(`/api/stocks/history/${symbol}?interval=${interval}&range=${range}`);
         const json = await res.json();
         const candles = json?.candles;
-        if (!candles?.length) { setError("No data"); return; }
-        candleSeries.setData(candles);
-        chart.timeScale().fitContent();
+        if (!candles?.length) { if (isInitial) setError("No data"); return; }
+
+        if (isInitial) {
+          candleSeries.setData(candles);
+          chart.timeScale().fitContent();
+        } else {
+          // Sirf last candle update karo
+          const last = candles[candles.length - 1];
+          candleSeries.update({
+            time: last.time,
+            open: last.open,
+            high: last.high,
+            low: last.low,
+            close: last.close,
+          });
+        }
+
         if (showRSI && rsiSeries) {
           const closes = candles.map((c: any) => c.close);
           const rsiValues = calcRSI(closes);
@@ -124,6 +143,7 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
             .filter(Boolean);
           rsiSeries.setData(rsiData);
         }
+
         if (showUTBot) {
           const { buys, sells } = calcUTBot(candles);
           const markers = [...buys, ...sells].sort((a,b) => a.time - b.time);
@@ -131,20 +151,31 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
         } else {
           candleSeries.setMarkers([]);
         }
-        setError(null);
+
+        if (isInitial) setError(null);
       } catch {
-        setError("Failed to load");
+        if (isInitial) setError("Failed to load");
       } finally {
-        setLoading(false);
+        if (isInitial) setLoading(false);
       }
     };
-    fetchData();
+
+    fetchData(true);
+
+    // Real-time: har 5 second mein last candle update
+    const refreshTimer = setInterval(() => fetchData(false), 5000);
+
     const handleResize = () => {
       const w2 = container.offsetWidth || window.innerWidth - 48;
       chart.applyOptions({ width: w2 });
     };
     window.addEventListener("resize", handleResize);
-    return () => { window.removeEventListener("resize", handleResize); chart.remove(); };
+
+    return () => {
+      clearInterval(refreshTimer);
+      window.removeEventListener("resize", handleResize);
+      chart.remove();
+    };
   }, [symbol, interval, range, height, showRSI, showUTBot]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -199,4 +230,4 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
       )}
     </div>
   );
-                     }  
+}

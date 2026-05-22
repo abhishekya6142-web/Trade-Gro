@@ -22,19 +22,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LightweightChart } from "@/components/LightweightChart";
 
 interface IntervalOption { label: string; interval: string; range: string; }
-
 const INTERVALS: IntervalOption[] = [
-  { label: "1m",  interval: "1m",  range: "7d"  },
-  { label: "2m",  interval: "2m",  range: "60d" },
-  { label: "3m",  interval: "2m",  range: "60d" },
-  { label: "5m",  interval: "5m",  range: "60d" },
-  { label: "10m", interval: "5m",  range: "60d" },
-  { label: "15m", interval: "15m", range: "60d" },
-  { label: "1h",  interval: "60m", range: "max" },
-  { label: "1D",  interval: "1d",  range: "max" },
-  { label: "1W",  interval: "1wk", range: "max" },
-  { label: "1M",  interval: "1mo", range: "max" },
+  { label: "1m",  interval: "1m",  range: "1d"  },  // max 7d, 1d safe
+  { label: "2m",  interval: "2m",  range: "5d"  },  // max 60d
+  { label: "3m",  interval: "2m",  range: "5d"  },  // max 60d
+  { label: "5m",  interval: "5m",  range: "60d" },  // max 60d
+  { label: "10m", interval: "5m",  range: "60d" },  // max 60d
+  { label: "15m", interval: "15m", range: "60d" },  // max 60d
+  { label: "1h",  interval: "60m", range: "730d"},  // max 730d
+  { label: "1D",  interval: "1d",  range: "max" },  // unlimited
+  { label: "1W",  interval: "1wk", range: "max" },  // unlimited
+  { label: "1M",  interval: "1mo", range: "max" },  // unlimited
 ];
+
 
 export default function StockDetail() {
   const params = useParams<{ symbol: string }>();

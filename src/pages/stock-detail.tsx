@@ -1,4 +1,4 @@
-// v3
+// v4
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import {
@@ -22,19 +22,50 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LightweightChart } from "@/components/LightweightChart";
 
 interface IntervalOption { label: string; interval: string; range: string; }
+
 const INTERVALS: IntervalOption[] = [
-  { label: "1m",  interval: "1m",  range: "1d"  },  // max 7d, 1d safe
-  { label: "2m",  interval: "2m",  range: "5d"  },  // max 60d
-  { label: "3m",  interval: "2m",  range: "5d"  },  // max 60d
-  { label: "5m",  interval: "5m",  range: "60d" },  // max 60d
-  { label: "10m", interval: "5m",  range: "60d" },  // max 60d
-  { label: "15m", interval: "15m", range: "60d" },  // max 60d
-  { label: "1h",  interval: "60m", range: "730d"},  // max 730d
-  { label: "1D",  interval: "1d",  range: "max" },  // unlimited
-  { label: "1W",  interval: "1wk", range: "max" },  // unlimited
-  { label: "1M",  interval: "1mo", range: "max" },  // unlimited
+  { label: "1m",  interval: "1m",  range: "1d"   },
+  { label: "2m",  interval: "2m",  range: "5d"   },
+  { label: "3m",  interval: "2m",  range: "5d"   },
+  { label: "5m",  interval: "5m",  range: "60d"  },
+  { label: "10m", interval: "5m",  range: "60d"  },
+  { label: "15m", interval: "15m", range: "60d"  },
+  { label: "1h",  interval: "60m", range: "730d" },
+  { label: "1D",  interval: "1d",  range: "max"  },
+  { label: "1W",  interval: "1wk", range: "max"  },
+  { label: "1M",  interval: "1mo", range: "max"  },
 ];
 
+// ── IntervalDropdown — StockDetail ke BAHAR ──────────────────────────────────
+function IntervalDropdown({ selected, onChange }: { selected: IntervalOption; onChange: (o: IntervalOption) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+        style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}>
+        {selected.label} <ChevronDown className="h-3 w-3" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 mt-1 z-50 rounded-xl p-2 shadow-xl"
+            style={{ background: "#0F1629", border: "1px solid #1E2A40", minWidth: "130px", top: "100%" }}>
+            <div className="grid grid-cols-2 gap-1">
+              {INTERVALS.map((opt) => (
+                <button key={opt.label} onClick={() => { onChange(opt); setOpen(false); }}
+                  className="px-2 py-1.5 rounded-lg text-xs font-semibold text-center"
+                  style={{ background: selected.label === opt.label ? "#00D897" : "#1A2540", color: selected.label === opt.label ? "#0A0E1A" : "#8B9CB3" }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function StockDetail() {
   const params = useParams<{ symbol: string }>();
@@ -45,7 +76,6 @@ export default function StockDetail() {
 
   const [selectedInterval, setSelectedInterval] = useState<IntervalOption>(INTERVALS.find((i) => i.label === "1D")!);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showIntervalDropdown, setShowIntervalDropdown] = useState(false);
   const [showRSI, setShowRSI] = useState(false);
   const [showUTBot, setShowUTBot] = useState(false);
   const [drawMode, setDrawMode] = useState(false);
@@ -54,21 +84,18 @@ export default function StockDetail() {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
 
-  // ── Price — direct fetch + 5s auto-refresh ──────────────────────────────
   const [quote, setQuote] = useState<any>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
 
   useEffect(() => {
     if (!symbol) return;
     setQuoteLoading(true);
-
     const fetchQuote = () => {
       fetch(`/api/stocks/${symbol}`)
         .then((r) => r.json())
         .then((data) => { setQuote(data); setQuoteLoading(false); })
         .catch(() => setQuoteLoading(false));
     };
-
     fetchQuote();
     const timer = setInterval(fetchQuote, 5000);
     return () => clearInterval(timer);
@@ -116,59 +143,18 @@ export default function StockDetail() {
 
   const totalTradeValue = (parseInt(tradeShares) || 0) * (quote?.price ?? 0);
 
-  const IntervalDropdown = () => (
-    <div className="relative">
-      <button
-        onClick={() => setShowIntervalDropdown(!showIntervalDropdown)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-        style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}
-      >
-        {selectedInterval.label}
-        <ChevronDown className="h-3 w-3" />
-      </button>
-      {showIntervalDropdown && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowIntervalDropdown(false)} />
-          <div className="absolute left-0 mt-1 z-50 rounded-xl p-2 shadow-xl"
-            style={{ background: "#0F1629", border: "1px solid #1E2A40", minWidth: "130px", top: "100%" }}>
-            <div className="grid grid-cols-2 gap-1">
-              {INTERVALS.map((opt) => (
-                <button key={opt.label}
-                  onClick={() => { setSelectedInterval(opt); setShowIntervalDropdown(false); }}
-                  className="px-2 py-1.5 rounded-lg text-xs font-semibold text-center"
-                  style={{
-                    background: selectedInterval.label === opt.label ? "#00D897" : "#1A2540",
-                    color: selectedInterval.label === opt.label ? "#0A0E1A" : "#8B9CB3",
-                  }}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-
   return (
     <>
       {isFullscreen && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0A0E1A" }}>
           <div className="flex items-center justify-between px-3 py-2 flex-shrink-0" style={{ borderBottom: "1px solid #1E2A40" }}>
-            <IntervalDropdown />
+            <IntervalDropdown selected={selectedInterval} onChange={setSelectedInterval} />
             <div className="flex items-center gap-1.5">
-              <button onClick={() => setShowRSI(!showRSI)}
-                className="px-2 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ background: showRSI ? "#00D897" : "#1A2540", color: showRSI ? "#0A0E1A" : "#8B9CB3", border: "1px solid #1E2A40" }}>
-                RSI
-              </button>
-              <button onClick={() => setShowUTBot(!showUTBot)}
-                className="px-2 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ background: showUTBot ? "#F59E0B" : "#1A2540", color: showUTBot ? "#0A0E1A" : "#8B9CB3", border: "1px solid #1E2A40" }}>
-                UT Bot
-              </button>
-              <button onClick={() => setDrawMode(!drawMode)}
-                className="p-1.5 rounded-lg"
+              <button onClick={() => setShowRSI(!showRSI)} className="px-2 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: showRSI ? "#00D897" : "#1A2540", color: showRSI ? "#0A0E1A" : "#8B9CB3", border: "1px solid #1E2A40" }}>RSI</button>
+              <button onClick={() => setShowUTBot(!showUTBot)} className="px-2 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: showUTBot ? "#F59E0B" : "#1A2540", color: showUTBot ? "#0A0E1A" : "#8B9CB3", border: "1px solid #1E2A40" }}>UT Bot</button>
+              <button onClick={() => setDrawMode(!drawMode)} className="p-1.5 rounded-lg"
                 style={{ background: drawMode ? "#8B5CF6" : "#1A2540", border: "1px solid #1E2A40" }}>
                 <Pencil className="h-3.5 w-3.5" style={{ color: drawMode ? "white" : "#8B9CB3" }} />
               </button>
@@ -252,7 +238,7 @@ export default function StockDetail() {
 
           <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             <div className="flex items-center justify-between px-4 py-3 gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
-              <IntervalDropdown />
+              <IntervalDropdown selected={selectedInterval} onChange={setSelectedInterval} />
               <div className="flex items-center gap-2">
                 <button onClick={handleAnalyze} disabled={analyzeChart.isPending}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
@@ -363,4 +349,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-            }
+    }

@@ -19,8 +19,8 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
   const isDrawing = useRef(false);
   const drawStart = useRef<{x:number;y:number}|null>(null);
   const [, forceUpdate] = useState(0);
-  const candleSeriesRef = useRef<any>(null);
   const lastCandleRef = useRef<any>(null);
+  const candleSeriesRef = useRef<any>(null);
 
   const calcRSI = (closes: number[], period = 14): (number | null)[] => {
     const rsi: (number | null)[] = new Array(closes.length).fill(null);
@@ -113,19 +113,17 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
       });
     }
 
-    const fetchData = async (isInitial = false) => {
+    const fetchInitial = async () => {
       try {
-        if (isInitial) setLoading(true);
+        setLoading(true);
         const res = await fetch(`/api/stocks/history/${symbol}?interval=${interval}&range=${range}`);
         const json = await res.json();
         const candles = json?.candles;
-        if (!candles?.length) { if (isInitial) setError("No data"); return; }
+        if (!candles?.length) { setError("No data"); return; }
 
-        if (isInitial) {
-          candleSeries.setData(candles);
-          chart.timeScale().fitContent();
-          lastCandleRef.current = candles[candles.length - 1];
-        }
+        candleSeries.setData(candles);
+        chart.timeScale().fitContent();
+        lastCandleRef.current = { ...candles[candles.length - 1] };
 
         if (showRSI && rsiSeries) {
           const closes = candles.map((c: any) => c.close);
@@ -140,48 +138,39 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
           const { buys, sells } = calcUTBot(candles);
           const markers = [...buys, ...sells].sort((a,b) => a.time - b.time);
           if (markers.length) candleSeries.setMarkers(markers);
-        } else {
-          candleSeries.setMarkers([]);
         }
 
-        if (isInitial) setError(null);
+        setError(null);
       } catch {
-        if (isInitial) setError("Failed to load");
+        setError("Failed to load");
       } finally {
-        if (isInitial) setLoading(false);
+        setLoading(false);
       }
     };
 
-    // Real-time: sirf price fetch karke last candle update karo
+    // Real-time price update — same candle update, naya nahi banega
     const refreshPrice = async () => {
+      const last = lastCandleRef.current;
+      const cs = candleSeriesRef.current;
+      if (!last || !cs) return;
       try {
-        const last = lastCandleRef.current;
-        if (!last) return;
         const res = await fetch(`/api/stocks/${symbol}`);
         const json = await res.json();
         if (!json?.price) return;
-        const newClose = json.price;
-        // Same timestamp — last candle update karo, naya nahi banega
-        candleSeries.update({
+        const newClose = Number(json.price);
+        const updated = {
           time: last.time,
           open: last.open,
           high: Math.max(last.high, newClose),
           low: Math.min(last.low, newClose),
           close: newClose,
-        });
-        // lastCandle update karo
-        lastCandleRef.current = {
-          ...last,
-          high: Math.max(last.high, newClose),
-          low: Math.min(last.low, newClose),
-          close: newClose,
         };
-      } catch (err) {
-        console.error("Price refresh error:", err);
-      }
+        cs.update(updated);
+        lastCandleRef.current = { ...last, ...updated };
+      } catch {}
     };
 
-    fetchData(true);
+    fetchInitial();
     const refreshTimer = setInterval(refreshPrice, 5000);
 
     const handleResize = () => {
@@ -193,6 +182,8 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
     return () => {
       clearInterval(refreshTimer);
       window.removeEventListener("resize", handleResize);
+      candleSeriesRef.current = null;
+      lastCandleRef.current = null;
       chart.remove();
     };
   }, [symbol, interval, range, height, showRSI, showUTBot]);

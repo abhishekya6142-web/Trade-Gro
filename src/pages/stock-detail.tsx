@@ -1,12 +1,10 @@
 // v3
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import {
-  useGetStockQuote,
   useGetNews,
   useExecuteTrade,
   useAnalyzeChart,
-  getGetStockQuoteQueryKey,
   getGetPortfolioQueryKey,
   getGetMeQueryKey,
   getGetTradesQueryKey,
@@ -56,9 +54,26 @@ export default function StockDetail() {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
 
-  const { data: quote, isLoading: quoteLoading } = useGetStockQuote(symbol, {
-    query: { enabled: !!symbol, queryKey: getGetStockQuoteQueryKey(symbol) },
-  });
+  // ── Price — direct fetch + 5s auto-refresh ──────────────────────────────
+  const [quote, setQuote] = useState<any>(null);
+  const [quoteLoading, setQuoteLoading] = useState(true);
+
+  useEffect(() => {
+    if (!symbol) return;
+    setQuoteLoading(true);
+
+    const fetchQuote = () => {
+      fetch(`/api/stocks/${symbol}`)
+        .then((r) => r.json())
+        .then((data) => { setQuote(data); setQuoteLoading(false); })
+        .catch(() => setQuoteLoading(false));
+    };
+
+    fetchQuote();
+    const timer = setInterval(fetchQuote, 5000);
+    return () => clearInterval(timer);
+  }, [symbol]);
+
   const { data: newsData } = useGetNews({ symbol });
   const executeTrade = useExecuteTrade();
   const analyzeChart = useAnalyzeChart();
@@ -348,4 +363,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-}
+            }

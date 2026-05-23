@@ -36,7 +36,6 @@ const INTERVALS: IntervalOption[] = [
   { label: "1M",  interval: "1mo", range: "max"  },
 ];
 
-// ── IntervalDropdown — StockDetail ke BAHAR ──────────────────────────────────
 function IntervalDropdown({ selected, onChange }: { selected: IntervalOption; onChange: (o: IntervalOption) => void }) {
   const [open, setOpen] = useState(false);
   return (
@@ -86,6 +85,10 @@ export default function StockDetail() {
 
   const [quote, setQuote] = useState<any>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
+
+  // INR for Indian stocks, USD for US stocks
+  const currency = symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD";
+  const fc = (val: number, sign = false) => formatCurrency(val, sign, currency);
 
   useEffect(() => {
     if (!symbol) return;
@@ -172,7 +175,7 @@ export default function StockDetail() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white">{quote?.symbol ?? ticker}</p>
               <p className="text-xs" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
-                {formatCurrency(quote?.price ?? 0)} {isPositive ? "▲" : "▼"} {formatPercent(Math.abs(quote?.changePercent ?? 0))}
+                {fc(quote?.price ?? 0)} {isPositive ? "▲" : "▼"} {formatPercent(Math.abs(quote?.changePercent ?? 0))}
               </p>
             </div>
             <button onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
@@ -208,19 +211,19 @@ export default function StockDetail() {
           <div className="rounded-2xl p-4" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
               <>
-                <div className="text-3xl font-bold text-white">{formatCurrency(quote?.price ?? 0)}</div>
+                <div className="text-3xl font-bold text-white">{fc(quote?.price ?? 0)}</div>
                 <div className="flex items-center gap-1 mt-1 text-base font-semibold" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
                   {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
-                  {formatCurrency(Math.abs(quote?.change ?? 0), true)} ({formatPercent(Math.abs(quote?.changePercent ?? 0))})
+                  {fc(Math.abs(quote?.change ?? 0), true)} ({formatPercent(Math.abs(quote?.changePercent ?? 0))})
                 </div>
               </>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #1E2A40" }}>
               {[
-                { label: "Open",       value: quote?.open         ? formatCurrency(quote.open)         : "—" },
-                { label: "Prev Close", value: quote?.previousClose ? formatCurrency(quote.previousClose): "—" },
-                { label: "52W High",   value: quote?.high52w       ? formatCurrency(quote.high52w)      : "—", color: "#00D897" },
-                { label: "52W Low",    value: quote?.low52w        ? formatCurrency(quote.low52w)       : "—", color: "#FF4757" },
+                { label: "Open",       value: quote?.open         ? fc(quote.open)         : "—" },
+                { label: "Prev Close", value: quote?.previousClose ? fc(quote.previousClose): "—" },
+                { label: "52W High",   value: quote?.high52w       ? fc(quote.high52w)      : "—", color: "#00D897" },
+                { label: "52W Low",    value: quote?.low52w        ? fc(quote.low52w)       : "—", color: "#FF4757" },
               ].map((s) => (
                 <div key={s.label}>
                   <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>{s.label}</p>
@@ -297,7 +300,7 @@ export default function StockDetail() {
           <div className="space-y-4 py-2">
             <div className="flex justify-between text-sm p-3 rounded-lg" style={{ background: "#1A2540" }}>
               <span style={{ color: "#8B9CB3" }}>Current Price</span>
-              <span className="font-bold text-white">{formatCurrency(quote?.price ?? 0)}</span>
+              <span className="font-bold text-white">{fc(quote?.price ?? 0)}</span>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-white">Number of Shares</label>
@@ -305,7 +308,7 @@ export default function StockDetail() {
             </div>
             <div className="flex justify-between text-sm p-3 rounded-lg border" style={{ borderColor: "#1E2A40" }}>
               <span className="text-white">Total Value</span>
-              <span className="font-bold text-white">{formatCurrency(totalTradeValue)}</span>
+              <span className="font-bold text-white">{fc(totalTradeValue)}</span>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setTradeOpen(false)}>Cancel</Button>
@@ -349,4 +352,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-    }
+                  }

@@ -10,8 +10,9 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [displayName, setDisplayName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!displayName.trim()) {
       toast({
         title: "Name required",
@@ -21,10 +22,35 @@ export default function Login() {
       return;
     }
 
-    const userId = crypto.randomUUID();
-    localStorage.setItem("tradevision_user_id", userId);
-    localStorage.setItem("tradevision_user_name", displayName);
-    setLocation("/dashboard");
+    setLoading(true);
+
+    try {
+      const userId = crypto.randomUUID();
+
+      const res = await fetch("/api/user/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: userId,
+          name: displayName,
+          email: `${userId}@tradevision.app`,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed");
+
+      localStorage.setItem("tradevision_user_id", userId);
+      localStorage.setItem("tradevision_user_name", displayName);
+      setLocation("/dashboard");
+    } catch {
+      toast({
+        title: "Error",
+        description: "Could not create account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -47,9 +73,9 @@ export default function Login() {
               <label htmlFor="name" className="text-sm font-medium text-foreground">
                 Choose your trader name
               </label>
-              <Input 
-                id="name" 
-                placeholder="e.g. DalalStreetPro" 
+              <Input
+                id="name"
+                placeholder="e.g. DalalStreetPro"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleStart()}
@@ -76,15 +102,16 @@ export default function Login() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button 
-            className="w-full h-12 text-base font-semibold" 
+          <Button
+            className="w-full h-12 text-base font-semibold"
             onClick={handleStart}
+            disabled={loading}
           >
-            Start Trading
-            <ArrowRight className="ml-2 h-5 w-5" />
+            {loading ? "Creating account..." : "Start Trading"}
+            {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
           </Button>
         </CardFooter>
       </Card>
     </div>
   );
-}                
+}

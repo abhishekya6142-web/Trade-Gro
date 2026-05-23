@@ -87,7 +87,7 @@ export default function StockDetail() {
   const [quoteLoading, setQuoteLoading] = useState(true);
 
   // INR for Indian stocks, USD for US stocks
-  const currency = symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD";
+  const currency = quote?.currency ?? (symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD");
   const fc = (val: number, sign = false) => formatCurrency(val, sign, currency);
 
   useEffect(() => {

@@ -159,14 +159,14 @@ export function LightweightChart({ symbol, interval, range, height = 400, showRS
         if (!json?.price) return;
         const newClose = Number(json.price);
         const updated = {
-          time: last.time,
-          open: last.open,
-          high: Math.max(last.high, newClose),
-          low: Math.min(last.low, newClose),
-          close: newClose,
-        };
-        cs.update(updated);
-        lastCandleRef.current = { ...last, ...updated };
+  time: last.time,
+  open: last.open,
+  high: last.high,
+  low: last.low,
+  close: newClose,
+};
+cs.update(updated);
+lastCandleRef.current = updated;
       } catch {}
     };
 

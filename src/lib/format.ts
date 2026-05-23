@@ -1,9 +1,16 @@
-export function formatCurrency(value: number, showSign = false): string {
+export function formatCurrency(value: number, showSign = false, currency = "INR"): string {
   const isNegative = value < 0;
   const absValue = Math.abs(value);
-  
+
   let formatted = '';
-  if (absValue >= 10000000) {
+
+  if (currency === "USD") {
+    formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 2
+    }).format(absValue);
+  } else if (absValue >= 10000000) {
     formatted = `₹${(absValue / 10000000).toFixed(2)} Cr`;
   } else if (absValue >= 100000) {
     formatted = `₹${(absValue / 100000).toFixed(2)} L`;

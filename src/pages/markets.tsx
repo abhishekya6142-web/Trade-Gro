@@ -8,15 +8,58 @@ import { COMPANIES, SECTOR_COLORS } from "@/lib/companies";
 
 const SECTORS = Array.from(new Set(COMPANIES.map((c) => c.sector))).sort();
 
+function isNSEOpen(): boolean {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const day = ist.getDay();
+  if (day === 0 || day === 6) return false;
+  const totalMins = ist.getHours() * 60 + ist.getMinutes();
+  return totalMins >= 9 * 60 + 15 && totalMins <= 15 * 60 + 30;
+}
+
+function isUSMarketOpen(): boolean {
+  const now = new Date();
+  const est = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const day = est.getDay();
+  if (day === 0 || day === 6) return false;
+  const totalMins = est.getHours() * 60 + est.getMinutes();
+  return totalMins >= 9 * 60 + 30 && totalMins <= 16 * 60;
+}
+
+function MarketBadge({ label, open }: { label: string; open: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold"
+      style={{
+        background: open ? "rgba(0,216,151,0.12)" : "rgba(255,71,87,0.12)",
+        border: `1px solid ${open ? "rgba(0,216,151,0.3)" : "rgba(255,71,87,0.3)"}`,
+        color: open ? "#00D897" : "#FF4757",
+      }}>
+      <div className="w-1.5 h-1.5 rounded-full shrink-0"
+        style={{ background: open ? "#00D897" : "#FF4757", boxShadow: open ? "0 0 6px #00D897" : "none" }} />
+      {label} {open ? "Open" : "Closed"}
+    </div>
+  );
+}
+
 export default function Markets() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeSector, setActiveSector] = useState<string>("All");
+  const [nseOpen, setNseOpen] = useState(isNSEOpen());
+  const [usOpen, setUsOpen] = useState(isUSMarketOpen());
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 400);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setNseOpen(isNSEOpen());
+      setUsOpen(isUSMarketOpen());
+    }, 60000);
+    return () => clearInterval(t);
+  }, []);
 
   const { data: searchResults, isLoading: isSearchLoading } = useSearchStocks(
     { q: debouncedQuery },
@@ -40,23 +83,26 @@ export default function Markets() {
     <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
       <div className="max-w-3xl mx-auto px-4 pt-6 space-y-4">
 
-        <div>
-          <h1 className="text-2xl font-bold text-white">Markets</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#8B9CB3" }}>
-            {COMPANIES.length} companies — NSE, BSE & Global
-          </p>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Markets</h1>
+            <p className="text-sm mt-0.5" style={{ color: "#8B9CB3" }}>
+              {COMPANIES.length} companies — NSE, BSE & Global
+            </p>
+          </div>
+          <div className="flex flex-col gap-1.5 items-end">
+            <MarketBadge label="NSE" open={nseOpen} />
+            <MarketBadge label="US" open={usOpen} />
+          </div>
         </div>
 
         {/* Search bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "#8B9CB3" }} />
           <input
-            className="w-full h-11 pl-9 pr-4 rounded-xl text-sm text-white placeholder-opacity-60 outline-none"
-            style={{
-              background: "#0F1629",
-              border: "1px solid #1E2A40",
-              color: "white",
-            }}
+            className="w-full h-11 pl-9 pr-4 rounded-xl text-sm outline-none"
+            style={{ background: "#0F1629", border: "1px solid #1E2A40", color: "white" }}
             placeholder="Search symbol or company..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -66,23 +112,20 @@ export default function Markets() {
         {/* Sector filter */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {["All", ...SECTORS].map((s) => (
-            <button
-              key={s}
-              onClick={() => setActiveSector(s)}
+            <button key={s} onClick={() => setActiveSector(s)}
               className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
               style={{
                 background: activeSector === s ? "#00D897" : "#0F1629",
                 color: activeSector === s ? "#0A0E1A" : "#8B9CB3",
                 border: "1px solid",
                 borderColor: activeSector === s ? "#00D897" : "#1E2A40",
-              }}
-            >
+              }}>
               {s}
             </button>
           ))}
         </div>
 
-        {/* Trending section (live prices) — only when no search */}
+        {/* Trending section */}
         {debouncedQuery.length < 2 && activeSector === "All" && (
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -99,21 +142,15 @@ export default function Markets() {
                   const isUp = stock.change >= 0;
                   return (
                     <Link key={stock.symbol} href={`/stock/${encodeURIComponent(stock.symbol)}`}>
-                      <div
-                        className="p-3 rounded-xl cursor-pointer hover:opacity-90 transition-all"
-                        style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
-                      >
+                      <div className="p-3 rounded-xl cursor-pointer hover:opacity-90 transition-all"
+                        style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
                         <div className="flex items-center justify-between mb-1">
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                            style={{ background: "#1A2540", color: "#00D897" }}
-                          >
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                            style={{ background: "#1A2540", color: "#00D897" }}>
                             {stock.symbol.replace(".NS", "")}
                           </span>
-                          <span
-                            className="text-[10px] font-semibold"
-                            style={{ color: isUp ? "#00D897" : "#FF4757" }}
-                          >
+                          <span className="text-[10px] font-semibold"
+                            style={{ color: isUp ? "#00D897" : "#FF4757" }}>
                             {isUp ? "+" : ""}{formatPercent(stock.changePercent)}
                           </span>
                         </div>
@@ -128,25 +165,21 @@ export default function Markets() {
           </div>
         )}
 
-        {/* Yahoo Finance search results */}
+        {/* Search results */}
         {debouncedQuery.length > 1 && searchResults?.results && searchResults.results.length > 0 && (
           <div>
             <p className="text-xs mb-2" style={{ color: "#8B9CB3" }}>Search results from Yahoo Finance</p>
             <div className="space-y-2">
               {searchResults.results.map((stock) => (
                 <Link key={stock.symbol} href={`/stock/${encodeURIComponent(stock.symbol)}`}>
-                  <div
-                    className="flex items-center justify-between p-3.5 rounded-xl cursor-pointer hover:opacity-90 transition-all"
-                    style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
-                  >
+                  <div className="flex items-center justify-between p-3.5 rounded-xl cursor-pointer hover:opacity-90"
+                    style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
                     <div>
                       <p className="font-bold text-white text-sm">{stock.symbol}</p>
                       <p className="text-xs" style={{ color: "#8B9CB3" }}>{stock.name}</p>
                     </div>
-                    <span
-                      className="text-xs px-2 py-1 rounded-lg font-medium"
-                      style={{ background: "#1A2540", color: "#8B9CB3" }}
-                    >
+                    <span className="text-xs px-2 py-1 rounded-lg font-medium"
+                      style={{ background: "#1A2540", color: "#8B9CB3" }}>
                       {stock.exchange}
                     </span>
                   </div>
@@ -162,7 +195,7 @@ export default function Markets() {
           </div>
         )}
 
-        {/* All companies list */}
+        {/* All companies */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -174,6 +207,7 @@ export default function Markets() {
                 </span>
               </span>
             </div>
+            <span className="text-[10px]" style={{ color: "#4A5568" }}>NSE 9:15–3:30 IST</span>
           </div>
 
           <div className="space-y-2">
@@ -184,19 +218,22 @@ export default function Markets() {
 
               return (
                 <Link key={company.symbol} href={`/stock/${encodeURIComponent(company.symbol)}`}>
-                  <div
-                    className="flex items-center justify-between p-3.5 rounded-xl cursor-pointer hover:opacity-90 transition-all"
-                    style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
-                  >
+                  <div className="flex items-center justify-between p-3.5 rounded-xl cursor-pointer hover:opacity-90 transition-all"
+                    style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0"
-                        style={{ background: `${sectorColor}18`, color: sectorColor }}
-                      >
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0"
+                        style={{ background: `${sectorColor}18`, color: sectorColor }}>
                         {company.symbol.replace(".NS", "").replace(".KS", "").slice(0, 5)}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{company.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-white truncate">{company.name}</p>
+                          <div className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{
+                              background: nseOpen ? "#00D897" : "#FF4757",
+                              boxShadow: nseOpen ? "0 0 4px #00D897" : "none",
+                            }} />
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] font-medium" style={{ color: sectorColor }}>
                             {company.sector}
@@ -213,10 +250,8 @@ export default function Markets() {
                       {live ? (
                         <>
                           <p className="text-sm font-bold text-white">{formatCurrency(live.price)}</p>
-                          <div
-                            className="flex items-center justify-end gap-0.5 text-[10px] font-semibold mt-0.5"
-                            style={{ color: isUp ? "#00D897" : "#FF4757" }}
-                          >
+                          <div className="flex items-center justify-end gap-0.5 text-[10px] font-semibold mt-0.5"
+                            style={{ color: isUp ? "#00D897" : "#FF4757" }}>
                             {isUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                             {formatPercent(Math.abs(live.changePercent))}
                           </div>
@@ -234,4 +269,4 @@ export default function Markets() {
       </div>
     </div>
   );
-}
+                          }

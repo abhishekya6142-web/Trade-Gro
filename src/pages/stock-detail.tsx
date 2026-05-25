@@ -3,13 +3,11 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetNews,
-  useExecuteTrade,
   useAnalyzeChart,
   getGetPortfolioQueryKey,
   getGetMeQueryKey,
   getGetTradesQueryKey,
 } from "@workspace/api-client-react";
-import { TradeRequestType } from "@workspace/api-client-react";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -81,13 +79,13 @@ export default function StockDetail() {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState("1");
   const [tradeOpen, setTradeOpen] = useState(false);
+  const [tradeLoading, setTradeLoading] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
 
   const [quote, setQuote] = useState<any>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
 
-  // INR for Indian stocks, USD for US stocks
-  const currency = quote?.currency ?? (symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD");
+  const currency = symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD";
   const fc = (val: number, sign = false) => formatCurrency(val, sign, currency);
 
   useEffect(() => {
@@ -105,7 +103,6 @@ export default function StockDetail() {
   }, [symbol]);
 
   const { data: newsData } = useGetNews({ symbol });
-  const executeTrade = useExecuteTrade();
   const analyzeChart = useAnalyzeChart();
 
   const isPositive = (quote?.change ?? 0) >= 0;
@@ -118,25 +115,51 @@ export default function StockDetail() {
       return;
     }
     const userId = localStorage.getItem("tradevision_user_id") ?? "";
-    executeTrade.mutate(
-      { data: { userId, symbol, type: tradeType as TradeRequestType, shares, price: quote?.price ?? 0 } },
-      {
-        onSuccess: (result) => {
+    if (!userId) {
+      toast({ title: "Not logged in", description: "Please login first.", variant: "destructive" });
+      return;
+    }
+
+    setTradeLoading(true);
+    fetch("/api/trades", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId,
+      },
+      body: JSON.stringify({
+        userId,
+        symbol,
+        stock_name: quote?.name ?? symbol,
+        type: tradeType,
+        shares,
+        price: quote?.price ?? 0,
+      }),
+    })
+      .then((r) => r.json())
+      .then((result) => {
+        if (result.success) {
           toast({
-            title: result.success ? `${tradeType === "buy" ? "Bought" : "Sold"} ${shares} shares` : "Trade failed",
+            title: `${tradeType === "buy" ? "Bought" : "Sold"} ${shares} shares of ${ticker}`,
             description: result.message,
-            variant: result.success ? "default" : "destructive",
           });
-          if (result.success) {
-            setTradeOpen(false);
-            queryClient.invalidateQueries({ queryKey: getGetPortfolioQueryKey() });
-            queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-            queryClient.invalidateQueries({ queryKey: getGetTradesQueryKey() });
-          }
-        },
-        onError: () => toast({ title: "Trade failed", description: "Something went wrong.", variant: "destructive" }),
-      }
-    );
+          setTradeOpen(false);
+          setTradeShares("1");
+          queryClient.invalidateQueries({ queryKey: getGetPortfolioQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetTradesQueryKey() });
+        } else {
+          toast({
+            title: "Trade failed",
+            description: result.message ?? result.error ?? "Something went wrong.",
+            variant: "destructive",
+          });
+        }
+      })
+      .catch(() => {
+        toast({ title: "Trade failed", description: "Network error.", variant: "destructive" });
+      })
+      .finally(() => setTradeLoading(false));
   };
 
   const handleAnalyze = () => {
@@ -192,6 +215,8 @@ export default function StockDetail() {
 
       <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
         <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
+
+          {/* Header */}
           <div className="flex items-center gap-3">
             <button onClick={() => setLocation("/markets")} className="p-2 rounded-xl"
               style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
@@ -208,6 +233,7 @@ export default function StockDetail() {
             </div>
           </div>
 
+          {/* Price */}
           <div className="rounded-2xl p-4" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
               <>
@@ -239,6 +265,7 @@ export default function StockDetail() {
             )}
           </div>
 
+          {/* Chart */}
           <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
             <div className="flex items-center justify-between px-4 py-3 gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
               <IntervalDropdown selected={selectedInterval} onChange={setSelectedInterval} />
@@ -261,6 +288,7 @@ export default function StockDetail() {
             </div>
           </div>
 
+          {/* Buy/Sell */}
           <div className="flex gap-3">
             <button className="flex-1 h-12 rounded-xl text-base font-bold" style={{ background: "#00D897", color: "#0A0E1A" }}
               onClick={() => { setTradeType("buy"); setTradeOpen(true); }}>Buy</button>
@@ -269,6 +297,7 @@ export default function StockDetail() {
               onClick={() => { setTradeType("sell"); setTradeOpen(true); }}>Sell</button>
           </div>
 
+          {/* News */}
           {newsData?.articles && newsData.articles.length > 0 && (
             <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
               <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
@@ -294,6 +323,7 @@ export default function StockDetail() {
         </div>
       </div>
 
+      {/* Trade Dialog */}
       <Dialog open={tradeOpen} onOpenChange={setTradeOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{tradeType === "buy" ? "Buy" : "Sell"} {ticker}</DialogTitle></DialogHeader>
@@ -314,14 +344,15 @@ export default function StockDetail() {
               <Button variant="outline" className="flex-1" onClick={() => setTradeOpen(false)}>Cancel</Button>
               <Button className="flex-1 font-bold"
                 style={{ background: tradeType === "buy" ? "#00D897" : "#FF4757", color: tradeType === "buy" ? "#0A0E1A" : "white" }}
-                onClick={handleTrade} disabled={executeTrade.isPending}>
-                {executeTrade.isPending ? "Processing…" : `Confirm ${tradeType === "buy" ? "Buy" : "Sell"}`}
+                onClick={handleTrade} disabled={tradeLoading}>
+                {tradeLoading ? "Processing…" : `Confirm ${tradeType === "buy" ? "Buy" : "Sell"}`}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* AI Analysis Dialog */}
       <Dialog open={analysisOpen} onOpenChange={setAnalysisOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -345,11 +376,4 @@ export default function StockDetail() {
               <div>
                 <p className="text-xs font-semibold mb-1" style={{ color: "#8B9CB3" }}>Summary</p>
                 <p className="text-sm leading-relaxed">{analyzeChart.data.summary}</p>
-              </div>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-                  }
+          

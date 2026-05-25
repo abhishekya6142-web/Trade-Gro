@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -5,21 +6,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const userId = req.headers['x-user-id'] || req.body?.userId;
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
 
-  await supabase.from('trades').delete().eq('user_id', userId);
-  
-  const { data, error } = await supabase
-    .from('users')
-    .update({ virtual_balance: 1000000, starting_balance: 1000000 })
-    .eq('id', userId)
-    .select()
-    .single();
+  try {
+    await supabase.from('trades').delete().eq('user_id', userId);
+    await supabase.from('users').update({
+      cash: 1000000,
+      portfolio_value: 1000000,
+    }).eq('id', userId);
 
-  if (error) return res.status(400).json({ error: error.message });
-  return res.status(200).json({ success: true, data });
+    res.status(200).json({ success: true, message: 'Account reset successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Reset failed' });
+  }
 }

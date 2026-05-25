@@ -6,7 +6,7 @@ const supabase = createClient(
 );
 
 export default async function handler(req: any, res: any) {
-  const userId = req.headers['x-user-id'];
+  const userId = req.headers['x-user-id'] || req.body?.userId;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {

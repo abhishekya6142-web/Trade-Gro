@@ -375,5 +375,10 @@ export default function StockDetail() {
               </div>
               <div>
                 <p className="text-xs font-semibold mb-1" style={{ color: "#8B9CB3" }}>Summary</p>
-                <p className="text-sm leading-relaxed">{analyzeChart.data.summary}</p>
+                <p className="text-sm leading-relaxed">{analyzeChart.data.summary}</p>) : null}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+          }
           

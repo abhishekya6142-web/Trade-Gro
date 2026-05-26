@@ -3,11 +3,13 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetNews,
+  useExecuteTrade,
   useAnalyzeChart,
   getGetPortfolioQueryKey,
   getGetMeQueryKey,
   getGetTradesQueryKey,
 } from "@workspace/api-client-react";
+import { TradeRequestType } from "@workspace/api-client-react";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -19,11 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { LightweightChart } from "@/components/LightweightChart";
 
-interface IntervalOption {
-  label: string;
-  interval: string;
-  range: string;
-}
+interface IntervalOption { label: string; interval: string; range: string; }
 
 const INTERVALS: IntervalOption[] = [
   { label: "1m",  interval: "1m",  range: "1d"   },
@@ -38,41 +36,25 @@ const INTERVALS: IntervalOption[] = [
   { label: "1M",  interval: "1mo", range: "max"  },
 ];
 
-function IntervalDropdown({
-  selected,
-  onChange,
-}: {
-  selected: IntervalOption;
-  onChange: (o: IntervalOption) => void;
-}) {
+function IntervalDropdown({ selected, onChange }: { selected: IntervalOption; onChange: (o: IntervalOption) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
+      <button onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-        style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}
-      >
+        style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}>
         {selected.label} <ChevronDown className="h-3 w-3" />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div
-            className="absolute left-0 mt-1 z-50 rounded-xl p-2 shadow-xl"
-            style={{ background: "#0F1629", border: "1px solid #1E2A40", minWidth: "130px", top: "100%" }}
-          >
+          <div className="absolute left-0 mt-1 z-50 rounded-xl p-2 shadow-xl"
+            style={{ background: "#0F1629", border: "1px solid #1E2A40", minWidth: "130px", top: "100%" }}>
             <div className="grid grid-cols-2 gap-1">
               {INTERVALS.map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => { onChange(opt); setOpen(false); }}
+                <button key={opt.label} onClick={() => { onChange(opt); setOpen(false); }}
                   className="px-2 py-1.5 rounded-lg text-xs font-semibold text-center"
-                  style={{
-                    background: selected.label === opt.label ? "#00D897" : "#1A2540",
-                    color: selected.label === opt.label ? "#0A0E1A" : "#8B9CB3",
-                  }}
-                >
+                  style={{ background: selected.label === opt.label ? "#00D897" : "#1A2540", color: selected.label === opt.label ? "#0A0E1A" : "#8B9CB3" }}>
                   {opt.label}
                 </button>
               ))}
@@ -91,9 +73,7 @@ export default function StockDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [selectedInterval, setSelectedInterval] = useState<IntervalOption>(
-    INTERVALS.find((i) => i.label === "1D")!
-  );
+  const [selectedInterval, setSelectedInterval] = useState<IntervalOption>(INTERVALS.find((i) => i.label === "1D")!);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRSI, setShowRSI] = useState(false);
   const [showUTBot, setShowUTBot] = useState(false);
@@ -101,12 +81,11 @@ export default function StockDetail() {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeShares, setTradeShares] = useState("1");
   const [tradeOpen, setTradeOpen] = useState(false);
-  const [tradeLoading, setTradeLoading] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [quote, setQuote] = useState<any>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
 
-  const currency = symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD";
+  const currency = quote?.currency ?? (symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD");
   const fc = (val: number, sign = false) => formatCurrency(val, sign, currency);
 
   useEffect(() => {
@@ -124,11 +103,11 @@ export default function StockDetail() {
   }, [symbol]);
 
   const { data: newsData } = useGetNews({ symbol });
+  const executeTrade = useExecuteTrade();
   const analyzeChart = useAnalyzeChart();
 
   const isPositive = (quote?.change ?? 0) >= 0;
   const ticker = symbol.replace(".NS", "").replace(".BO", "").replace(".KS", "");
-  const totalTradeValue = (parseInt(tradeShares) || 0) * (quote?.price ?? 0);
 
   const handleTrade = () => {
     const shares = parseInt(tradeShares);
@@ -137,40 +116,25 @@ export default function StockDetail() {
       return;
     }
     const userId = localStorage.getItem("tradevision_user_id") ?? "";
-    if (!userId) {
-      toast({ title: "Not logged in", description: "Please login first.", variant: "destructive" });
-      return;
-    }
-    setTradeLoading(true);
-    fetch("/api/trades", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-user-id": userId },
-      body: JSON.stringify({
-        userId,
-        symbol,
-        stock_name: quote?.name ?? symbol,
-        type: tradeType,
-        shares,
-        price: quote?.price ?? 0,
-      }),
-    })
-      .then((r) => r.json())
-      .then((result) => {
-        if (result.success) {
-          toast({ title: `${tradeType === "buy" ? "Bought" : "Sold"} ${shares} shares of ${ticker}`, description: result.message });
-          setTradeOpen(false);
-          setTradeShares("1");
-          queryClient.invalidateQueries({ queryKey: getGetPortfolioQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetTradesQueryKey() });
-        } else {
-          toast({ title: "Trade failed", description: result.message ?? result.error ?? "Something went wrong.", variant: "destructive" });
-        }
-      })
-      .catch(() => {
-        toast({ title: "Trade failed", description: "Network error.", variant: "destructive" });
-      })
-      .finally(() => setTradeLoading(false));
+    executeTrade.mutate(
+      { data: { userId, symbol, type: tradeType as TradeRequestType, shares, price: quote?.price ?? 0 } },
+      {
+        onSuccess: (result) => {
+          toast({
+            title: result.success ? `${tradeType === "buy" ? "Bought" : "Sold"} ${shares} shares` : "Trade failed",
+            description: result.message,
+            variant: result.success ? "default" : "destructive",
+          });
+          if (result.success) {
+            setTradeOpen(false);
+            queryClient.invalidateQueries({ queryKey: getGetPortfolioQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetTradesQueryKey() });
+          }
+        },
+        onError: () => toast({ title: "Trade failed", description: "Something went wrong.", variant: "destructive" }),
+      }
+    );
   };
 
   const handleAnalyze = () => {
@@ -178,35 +142,21 @@ export default function StockDetail() {
     analyzeChart.mutate({ data: { symbol, candles: [], interval: selectedInterval.interval } });
   };
 
+  const totalTradeValue = (parseInt(tradeShares) || 0) * (quote?.price ?? 0);
+
   return (
     <>
       {isFullscreen && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0A0E1A" }}>
-          <div
-            className="flex items-center justify-between px-3 py-2 flex-shrink-0"
-            style={{ borderBottom: "1px solid #1E2A40" }}
-          >
+          <div className="flex items-center justify-between px-3 py-2 flex-shrink-0" style={{ borderBottom: "1px solid #1E2A40" }}>
             <IntervalDropdown selected={selectedInterval} onChange={setSelectedInterval} />
             <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setShowRSI(!showRSI)}
-                className="px-2 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ background: showRSI ? "#00D897" : "#1A2540", color: showRSI ? "#0A0E1A" : "#8B9CB3", border: "1px solid #1E2A40" }}
-              >
-                RSI
-              </button>
-              <button
-                onClick={() => setShowUTBot(!showUTBot)}
-                className="px-2 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ background: showUTBot ? "#F59E0B" : "#1A2540", color: showUTBot ? "#0A0E1A" : "#8B9CB3", border: "1px solid #1E2A40" }}
-              >
-                UT Bot
-              </button>
-              <button
-                onClick={() => setDrawMode(!drawMode)}
-                className="p-1.5 rounded-lg"
-                style={{ background: drawMode ? "#8B5CF6" : "#1A2540", border: "1px solid #1E2A40" }}
-              >
+              <button onClick={() => setShowRSI(!showRSI)} className="px-2 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: showRSI ? "#00D897" : "#1A2540", color: showRSI ? "#0A0E1A" : "#8B9CB3", border: "1px solid #1E2A40" }}>RSI</button>
+              <button onClick={() => setShowUTBot(!showUTBot)} className="px-2 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: showUTBot ? "#F59E0B" : "#1A2540", color: showUTBot ? "#0A0E1A" : "#8B9CB3", border: "1px solid #1E2A40" }}>UT Bot</button>
+              <button onClick={() => setDrawMode(!drawMode)} className="p-1.5 rounded-lg"
+                style={{ background: drawMode ? "#8B5CF6" : "#1A2540", border: "1px solid #1E2A40" }}>
                 <Pencil className="h-3.5 w-3.5" style={{ color: drawMode ? "white" : "#8B9CB3" }} />
               </button>
               <button onClick={() => setIsFullscreen(false)} className="p-1.5 rounded-lg" style={{ background: "#1A2540" }}>
@@ -215,40 +165,22 @@ export default function StockDetail() {
             </div>
           </div>
           <div className="flex-1 overflow-hidden">
-            <LightweightChart
-              symbol={symbol}
-              interval={selectedInterval.interval}
-              range={selectedInterval.range}
-              height={window.innerHeight - 120}
-              showRSI={showRSI}
-              showUTBot={showUTBot}
-              drawMode={drawMode}
-            />
+            <LightweightChart symbol={symbol} interval={selectedInterval.interval} range={selectedInterval.range}
+              height={window.innerHeight - 120} showRSI={showRSI} showUTBot={showUTBot} drawMode={drawMode} />
           </div>
-          <div
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2"
-            style={{ height: "60px", background: "#0F1629", borderTop: "1px solid #1E2A40" }}
-          >
+          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2"
+            style={{ height: "60px", background: "#0F1629", borderTop: "1px solid #1E2A40" }}>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white">{quote?.symbol ?? ticker}</p>
               <p className="text-xs" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
                 {fc(quote?.price ?? 0)} {isPositive ? "▲" : "▼"} {formatPercent(Math.abs(quote?.changePercent ?? 0))}
               </p>
             </div>
-            <button
-              onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
+            <button onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
+              className="px-5 py-2 rounded-xl text-sm font-bold" style={{ background: "#00D897", color: "#0A0E1A" }}>Buy</button>
+            <button onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
               className="px-5 py-2 rounded-xl text-sm font-bold"
-              style={{ background: "#00D897", color: "#0A0E1A" }}
-            >
-              Buy
-            </button>
-            <button
-              onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
-              className="px-5 py-2 rounded-xl text-sm font-bold"
-              style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
-            >
-              Sell
-            </button>
+              style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}>Sell</button>
             <button onClick={() => setIsFullscreen(false)} className="p-2 rounded-xl" style={{ background: "#1A2540" }}>
               <Minimize2 className="h-4 w-4 text-white" />
             </button>
@@ -258,24 +190,16 @@ export default function StockDetail() {
 
       <div className="min-h-screen pb-20" style={{ background: "#0A0E1A" }}>
         <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
-
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setLocation("/markets")}
-              className="p-2 rounded-xl"
-              style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
-            >
+            <button onClick={() => setLocation("/markets")} className="p-2 rounded-xl"
+              style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
               <ArrowLeft className="h-4 w-4 text-white" />
             </button>
             <div className="flex-1 min-w-0">
-              {quoteLoading ? (
-                <Skeleton className="h-7 w-40" />
-              ) : (
+              {quoteLoading ? <Skeleton className="h-7 w-40" /> : (
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl font-bold text-white">{quote?.symbol ?? ticker}</h1>
-                  <Badge variant="outline" className="text-xs" style={{ borderColor: "#1E2A40", color: "#8B9CB3" }}>
-                    {quote?.sector ?? "Equity"}
-                  </Badge>
+                  <Badge variant="outline" className="text-xs" style={{ borderColor: "#1E2A40", color: "#8B9CB3" }}>{quote?.sector ?? "Equity"}</Badge>
                 </div>
               )}
               <p className="text-xs truncate mt-0.5" style={{ color: "#8B9CB3" }}>{quote?.name ?? symbol}</p>
@@ -283,15 +207,10 @@ export default function StockDetail() {
           </div>
 
           <div className="rounded-2xl p-4" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-            {quoteLoading ? (
-              <Skeleton className="h-10 w-40" />
-            ) : (
+            {quoteLoading ? <Skeleton className="h-10 w-40" /> : (
               <>
                 <div className="text-3xl font-bold text-white">{fc(quote?.price ?? 0)}</div>
-                <div
-                  className="flex items-center gap-1 mt-1 text-base font-semibold"
-                  style={{ color: isPositive ? "#00D897" : "#FF4757" }}
-                >
+                <div className="flex items-center gap-1 mt-1 text-base font-semibold" style={{ color: isPositive ? "#00D897" : "#FF4757" }}>
                   {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
                   {fc(Math.abs(quote?.change ?? 0), true)} ({formatPercent(Math.abs(quote?.changePercent ?? 0))})
                 </div>
@@ -299,10 +218,10 @@ export default function StockDetail() {
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #1E2A40" }}>
               {[
-                { label: "Open",       value: quote?.open          ? fc(quote.open)          : "—" },
-                { label: "Prev Close", value: quote?.previousClose  ? fc(quote.previousClose) : "—" },
-                { label: "52W High",   value: quote?.high52w        ? fc(quote.high52w)       : "—", color: "#00D897" },
-                { label: "52W Low",    value: quote?.low52w         ? fc(quote.low52w)        : "—", color: "#FF4757" },
+                { label: "Open",       value: quote?.open         ? fc(quote.open)         : "—" },
+                { label: "Prev Close", value: quote?.previousClose ? fc(quote.previousClose): "—" },
+                { label: "52W High",   value: quote?.high52w       ? fc(quote.high52w)      : "—", color: "#00D897" },
+                { label: "52W Low",    value: quote?.low52w        ? fc(quote.low52w)       : "—", color: "#FF4757" },
               ].map((s) => (
                 <div key={s.label}>
                   <p className="text-xs mb-0.5" style={{ color: "#8B9CB3" }}>{s.label}</p>
@@ -319,58 +238,33 @@ export default function StockDetail() {
           </div>
 
           <div className="rounded-2xl overflow-hidden" style={{ background: "#0F1629", border: "1px solid #1E2A40" }}>
-            <div
-              className="flex items-center justify-between px-4 py-3 gap-2"
-              style={{ borderBottom: "1px solid #1E2A40" }}
-            >
+            <div className="flex items-center justify-between px-4 py-3 gap-2" style={{ borderBottom: "1px solid #1E2A40" }}>
               <IntervalDropdown selected={selectedInterval} onChange={setSelectedInterval} />
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleAnalyze}
-                  disabled={analyzeChart.isPending}
+                <button onClick={handleAnalyze} disabled={analyzeChart.isPending}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}
-                >
+                  style={{ background: "#1A2540", color: "#00D897", border: "1px solid #1E2A40" }}>
                   <BrainCircuit className="h-3.5 w-3.5" />
                   {analyzeChart.isPending ? "Analyzing…" : "AI Analysis"}
                 </button>
-                <button
-                  onClick={() => setIsFullscreen(true)}
-                  className="p-1.5 rounded-lg"
-                  style={{ background: "#1A2540", border: "1px solid #1E2A40" }}
-                >
+                <button onClick={() => setIsFullscreen(true)} className="p-1.5 rounded-lg"
+                  style={{ background: "#1A2540", border: "1px solid #1E2A40" }}>
                   <Maximize2 className="h-3.5 w-3.5" style={{ color: "#8B9CB3" }} />
                 </button>
               </div>
             </div>
             <div className="p-3">
-              <LightweightChart
-                symbol={symbol}
-                interval={selectedInterval.interval}
-                range={selectedInterval.range}
-                height={400}
-                showRSI={false}
-                showUTBot={false}
-                drawMode={false}
-              />
+              <LightweightChart symbol={symbol} interval={selectedInterval.interval} range={selectedInterval.range}
+                height={400} showRSI={false} showUTBot={false} drawMode={false} />
             </div>
           </div>
 
           <div className="flex gap-3">
-            <button
-              className="flex-1 h-12 rounded-xl text-base font-bold"
-              style={{ background: "#00D897", color: "#0A0E1A" }}
-              onClick={() => { setTradeType("buy"); setTradeOpen(true); }}
-            >
-              Buy
-            </button>
-            <button
-              className="flex-1 h-12 rounded-xl text-base font-bold"
+            <button className="flex-1 h-12 rounded-xl text-base font-bold" style={{ background: "#00D897", color: "#0A0E1A" }}
+              onClick={() => { setTradeType("buy"); setTradeOpen(true); }}>Buy</button>
+            <button className="flex-1 h-12 rounded-xl text-base font-bold"
               style={{ background: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.4)" }}
-              onClick={() => { setTradeType("sell"); setTradeOpen(true); }}
-            >
-              Sell
-            </button>
+              onClick={() => { setTradeType("sell"); setTradeOpen(true); }}>Sell</button>
           </div>
 
           {newsData?.articles && newsData.articles.length > 0 && (
@@ -381,40 +275,26 @@ export default function StockDetail() {
               </div>
               <div className="divide-y" style={{ borderColor: "#1E2A40" }}>
                 {newsData.articles.slice(0, 4).map((article) => (
-                  <a
-                    key={article.id}
-                    href={article.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block px-4 py-3 hover:opacity-80"
-                  >
+                  <a key={article.id} href={article.url} target="_blank" rel="noopener noreferrer" className="block px-4 py-3 hover:opacity-80">
                     <p className="text-sm font-medium text-white leading-snug line-clamp-2">{article.title}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-xs" style={{ color: "#8B9CB3" }}>{article.source}</span>
-                      <span
-                        className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                        style={{
-                          background: article.sentiment === "positive" ? "rgba(0,216,151,0.15)" : article.sentiment === "negative" ? "rgba(255,71,87,0.15)" : "#1A2540",
-                          color: article.sentiment === "positive" ? "#00D897" : article.sentiment === "negative" ? "#FF4757" : "#8B9CB3",
-                        }}
-                      >
-                        {article.sentiment}
-                      </span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{
+                        background: article.sentiment === "positive" ? "rgba(0,216,151,0.15)" : article.sentiment === "negative" ? "rgba(255,71,87,0.15)" : "#1A2540",
+                        color: article.sentiment === "positive" ? "#00D897" : article.sentiment === "negative" ? "#FF4757" : "#8B9CB3",
+                      }}>{article.sentiment}</span>
                     </div>
                   </a>
                 ))}
               </div>
             </div>
           )}
-
         </div>
       </div>
 
       <Dialog open={tradeOpen} onOpenChange={setTradeOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{tradeType === "buy" ? "Buy" : "Sell"} {ticker}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{tradeType === "buy" ? "Buy" : "Sell"} {ticker}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="flex justify-between text-sm p-3 rounded-lg" style={{ background: "#1A2540" }}>
               <span style={{ color: "#8B9CB3" }}>Current Price</span>
@@ -422,29 +302,18 @@ export default function StockDetail() {
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-white">Number of Shares</label>
-              <Input
-                type="number"
-                min="1"
-                value={tradeShares}
-                onChange={(e) => setTradeShares(e.target.value)}
-                className="h-12"
-              />
+              <Input type="number" min="1" value={tradeShares} onChange={(e) => setTradeShares(e.target.value)} className="h-12" />
             </div>
             <div className="flex justify-between text-sm p-3 rounded-lg border" style={{ borderColor: "#1E2A40" }}>
               <span className="text-white">Total Value</span>
               <span className="font-bold text-white">{fc(totalTradeValue)}</span>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setTradeOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 font-bold"
+              <Button variant="outline" className="flex-1" onClick={() => setTradeOpen(false)}>Cancel</Button>
+              <Button className="flex-1 font-bold"
                 style={{ background: tradeType === "buy" ? "#00D897" : "#FF4757", color: tradeType === "buy" ? "#0A0E1A" : "white" }}
-                onClick={handleTrade}
-                disabled={tradeLoading}
-              >
-                {tradeLoading ? "Processing…" : `Confirm ${tradeType === "buy" ? "Buy" : "Sell"}`}
+                onClick={handleTrade} disabled={executeTrade.isPending}>
+                {executeTrade.isPending ? "Processing…" : `Confirm ${tradeType === "buy" ? "Buy" : "Sell"}`}
               </Button>
             </div>
           </div>
@@ -460,24 +329,14 @@ export default function StockDetail() {
             </DialogTitle>
           </DialogHeader>
           {analyzeChart.isPending ? (
-            <div className="space-y-3 py-4">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-5 w-full" />
-              ))}
-            </div>
+            <div className="space-y-3 py-4">{[1,2,3,4].map((i) => <Skeleton key={i} className="h-5 w-full" />)}</div>
           ) : analyzeChart.data ? (
             <div className="space-y-4 py-2">
               <div className="flex flex-wrap gap-2">
-                <Badge
-                  className="text-sm font-semibold"
-                  style={{
-                    background: analyzeChart.data.signal === "bullish" ? "rgba(0,216,151,0.15)" : analyzeChart.data.signal === "bearish" ? "rgba(255,71,87,0.15)" : "rgba(245,158,11,0.15)",
-                    color: analyzeChart.data.signal === "bullish" ? "#00D897" : analyzeChart.data.signal === "bearish" ? "#FF4757" : "#F59E0B",
-                    border: "none",
-                  }}
-                >
-                  {analyzeChart.data.signal.toUpperCase()}
-                </Badge>
+                <Badge className="text-sm font-semibold" style={{
+                  background: analyzeChart.data.signal === "bullish" ? "rgba(0,216,151,0.15)" : analyzeChart.data.signal === "bearish" ? "rgba(255,71,87,0.15)" : "rgba(245,158,11,0.15)",
+                  color: analyzeChart.data.signal === "bullish" ? "#00D897" : analyzeChart.data.signal === "bearish" ? "#FF4757" : "#F59E0B", border: "none",
+                }}>{analyzeChart.data.signal.toUpperCase()}</Badge>
                 <Badge variant="outline">{analyzeChart.data.confidence}% confidence</Badge>
                 <Badge variant="outline" className="capitalize">Risk: {analyzeChart.data.risk}</Badge>
               </div>
@@ -491,4 +350,4 @@ export default function StockDetail() {
       </Dialog>
     </>
   );
-} 
+                    }

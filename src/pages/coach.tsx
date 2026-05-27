@@ -54,6 +54,7 @@ export default function Coach() {
           setMessages((prev) => [
             ...prev,
             { role: "assistant", content: "fuck man." },
+            { role: "assistant", content: "bulshit" },
           ]);
         },
       }

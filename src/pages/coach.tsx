@@ -59,7 +59,8 @@ export default function Coach() {
             { role: "assistant", content: "mc" },
             { role: "assistant", content: "tu mujhe janta nahi hai." },
             { role: "assistant", content: "kaam dhanda nahi hai kya" },
-            { role: "assistant", content: "mc" },
+            { role: "assistant", content: "aajata hai pareshan karne" },
+            { role: "assistant", content: "dubara message mat karna" },
           ]);
         },
       }

@@ -8,7 +8,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const interval = Array.isArray(req.query.interval) ? req.query.interval[0] : req.query.interval ?? '1d';
   const range = Array.isArray(req.query.range) ? req.query.range[0] : req.query.range ?? '1mo';
 
-  const finalSymbol = symbol.includes('.') ? symbol : `${symbol}.NS`;
+  const isIndian = symbol.endsWith('.NS') || symbol.endsWith('.BO');
+const finalSymbol = symbol.includes('.') ? symbol : `${symbol}.NS`;
+const fetchSymbols = isIndian 
+  ? [finalSymbol] 
+  : [symbol, `${symbol}.NS`]; // US stocks ke liye pehle original try karo
 
   const tryFetch = async (sym: string, inv: string, rng: string) => {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${inv}&range=${rng}`;

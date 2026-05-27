@@ -53,7 +53,7 @@ export default function Coach() {
         onError: () => {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: "Sorry, I had trouble responding. Please try again." },
+            { role: "assistant", content: "fuck man." },
           ]);
         },
       }

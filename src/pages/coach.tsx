@@ -55,6 +55,9 @@ export default function Coach() {
             ...prev,
             { role: "assistant", content: "fuck man." },
             { role: "assistant", content: "bulshit" },
+            { role: "assistant", content: "bc" },
+            { role: "assistant", content: "mc" },
+            { role: "assistant", content: "tu mujhe janta nahi hai." },
           ]);
         },
       }

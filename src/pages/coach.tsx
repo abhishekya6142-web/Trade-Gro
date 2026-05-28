@@ -53,14 +53,8 @@ export default function Coach() {
         onError: () => {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: "fuck man." },
-            { role: "assistant", content: "bulshit" },
-            { role: "assistant", content: "bc" },
-            { role: "assistant", content: "mc" },
-            { role: "assistant", content: "tu mujhe janta nahi hai." },
-            { role: "assistant", content: "kaam dhanda nahi hai kya" },
-            { role: "assistant", content: "aajata hai pareshan karne" },
-            { role: "assistant", content: "dubara message mat karna" },
+            { role: "assistant", content: "sorry, I am not ready." },
+            
           ]);
         },
       }

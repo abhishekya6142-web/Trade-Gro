@@ -104,6 +104,7 @@ export default function Coach() {
         </button>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -113,14 +114,16 @@ export default function Coach() {
                 <BrainCircuit className="h-3.5 w-3.5" style={{ color: "#00D897" }} />
               </div>
             )}
-            <div className="max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
+            <div
+              className="max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
               style={{
                 background: msg.role === "user" ? "#00D897" : "#0F1629",
                 color: msg.role === "user" ? "#0A0E1A" : "white",
                 border: msg.role === "assistant" ? "1px solid #1E2A40" : "none",
                 borderTopLeftRadius: msg.role === "assistant" ? "4px" : "16px",
                 borderTopRightRadius: msg.role === "user" ? "4px" : "16px",
-              }}>
+              }}
+            >
               {msg.content}
             </div>
             {msg.role === "user" && (
@@ -152,6 +155,7 @@ export default function Coach() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Starter prompts */}
       {messages.length === 1 && (
         <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-none flex-shrink-0">
           {STARTER_PROMPTS.map((prompt) => (
@@ -164,6 +168,7 @@ export default function Coach() {
         </div>
       )}
 
+      {/* Input */}
       <div className="px-4 py-3 flex gap-2 items-end flex-shrink-0"
         style={{ borderTop: "1px solid #1E2A40", background: "#0F1629" }}>
         <textarea
@@ -173,7 +178,12 @@ export default function Coach() {
           onKeyDown={handleKeyDown}
           rows={1}
           className="flex-1 resize-none rounded-xl px-4 py-3 text-sm outline-none"
-          style={{ background: "#1A2540", border: "1px solid #1E2A40", color: "white", maxHeight: "120px" }}
+          style={{
+            background: "#1A2540",
+            border: "1px solid #1E2A40",
+            color: "white",
+            maxHeight: "120px",
+          }}
         />
         <button
           onClick={() => sendMessage()}
@@ -182,10 +192,11 @@ export default function Coach() {
           style={{
             background: loading || !input.trim() ? "#1A2540" : "#00D897",
             color: loading || !input.trim() ? "#4A5568" : "#0A0E1A",
-          }}>
+          }}
+        >
           <Send className="h-4 w-4" />
         </button>
       </div>
     </div>
   );
-          }
+  }

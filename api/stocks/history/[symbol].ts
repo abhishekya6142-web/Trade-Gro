@@ -5,24 +5,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const rawSymbol = req.query.symbol;
   const symbol = Array.isArray(rawSymbol) ? rawSymbol[0] : rawSymbol ?? '';
-  const interval = Array.isArray(req.query.interval) ? req.query.interval[0] : req.query.interval ?? '1d';
-  const range = Array.isArray(req.query.range) ? req.query.range[0] : req.query.range ?? '1mo';
+  const interval = Array.isArray(req.query.interval)
+    ? req.query.interval[0]
+    : req.query.interval ?? '1d';
+
+  const range = Array.isArray(req.query.range)
+    ? req.query.range[0]
+    : req.query.range ?? '1mo';
 
   const isIndian = symbol.endsWith('.NS') || symbol.endsWith('.BO');
-const finalSymbol = symbol.includes('.') ? symbol : `${symbol}.NS`;
-const fetchSymbols = isIndian 
-  ? [finalSymbol] 
-  : [symbol, `${symbol}.NS`]; // US stocks ke liye pehle original try karo
+
+  const finalSymbol = symbol.includes('.')
+    ? symbol
+    : `${symbol}.NS`;
+
+  const fetchSymbols = isIndian
+    ? [finalSymbol]
+    : [symbol, `${symbol}.NS`];
 
   const tryFetch = async (sym: string, inv: string, rng: string) => {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${inv}&range=${rng}`;
+
     const r = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json',
-      }
+      },
     });
+
     const data = await r.json();
+
     return data?.chart?.result?.[0];
   };
 
@@ -34,18 +47,24 @@ const fetchSymbols = isIndian
     if (!result?.timestamp?.length) {
       result = await tryFetch(finalSymbol, '1d', '1y');
     }
+
     if (!result?.timestamp?.length) {
       result = await tryFetch(finalSymbol, '1d', '6mo');
     }
+
     if (!result?.timestamp?.length) {
       result = await tryFetch(finalSymbol, '1d', '3mo');
     }
+
     if (!result?.timestamp?.length) {
       result = await tryFetch(finalSymbol, '1d', '1mo');
     }
 
     if (!result?.timestamp?.length) {
-      return res.status(404).json({ error: 'No data found', symbol: finalSymbol });
+      return res.status(404).json({
+        error: 'No data found',
+        symbol: finalSymbol,
+      });
     }
 
     const timestamps: number[] = result.timestamp;
@@ -62,8 +81,14 @@ const fetchSymbols = isIndian
       }))
       .filter((c) => c.open && c.high && c.low && c.close);
 
-    res.status(200).json({ symbol: finalSymbol, candles });
+    return res.status(200).json({
+      symbol: finalSymbol,
+      candles,
+    });
+
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch chart data' });
+    return res.status(500).json({
+      error: 'Failed to fetch chart data',
+    });
   }
-  }
+        }

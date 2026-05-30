@@ -95,7 +95,7 @@ export default function Coach() {
           </div>
           <div>
             <p className="text-sm font-bold text-white">TradeBot</p>
-            <p className="text-[10px]" style={{ color: "#00D897" }}>● Powered by Grok AI</p>
+            <p className="text-[10px]" style={{ color: "#00D897" }}>● Powered by Gemini AI</p>
           </div>
         </div>
         <button onClick={clearChat} className="p-2 rounded-xl"
@@ -199,4 +199,4 @@ export default function Coach() {
       </div>
     </div>
   );
-  }
+                  }

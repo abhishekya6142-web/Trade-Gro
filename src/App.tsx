@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +13,7 @@ import Coach from "@/pages/coach";
 import Leaderboard from "@/pages/leaderboard";
 import Challenges from "@/pages/challenges";
 import Profile from "@/pages/profile";
+import Learn from "@/pages/learn";
 import { Layout } from "@/components/Layout";
 
 const queryClient = new QueryClient({
@@ -75,6 +76,8 @@ function Router() {
       <Route path="/leaderboard"><ProtectedRoute component={Leaderboard} /></Route>
       <Route path="/challenges"><ProtectedRoute component={Challenges} /></Route>
       <Route path="/profile"><ProtectedRoute component={Profile} /></Route>
+      <Route path="/learn"><ProtectedRoute component={Learn} /></Route>
+      <Route path="/learn/:slug"><ProtectedRoute component={Learn} /></Route>
       <Route component={NotFound} />
     </Switch>
   );

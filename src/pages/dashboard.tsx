@@ -18,15 +18,6 @@ const QUICK_ACTIONS = [
   { label: "Learn", icon: BookOpen, href: "/learn" },
 ];
 
-const LEARN_TOPICS = [
-  { title: "Candlestick Patterns", emoji: "🕯️", desc: "Read candles like a pro" },
-  { title: "Chart Patterns", emoji: "📈", desc: "Head & shoulders, flags..." },
-  { title: "Volume Analysis", emoji: "📊", desc: "Track smart money flow" },
-  { title: "Price Action", emoji: "💹", desc: "Trade without indicators" },
-  { title: "Liquidity Zones", emoji: "🌊", desc: "Find hidden support levels" },
-  { title: "Risk Management", emoji: "🛡️", desc: "Protect your capital" },
-];
-
 export default function Dashboard() {
   const { data: user, isLoading: isUserLoading } = useGetMe();
   const { data: portfolio } = useGetPortfolio();
@@ -141,30 +132,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Learn Trading */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-white">Learn Trading</h2>
-            <Link href="/learn">
-              <span className="text-sm font-semibold" style={{ color: "#00D897" }}>See all</span>
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {LEARN_TOPICS.map((topic) => (
-              <Link key={topic.title} href={`/learn/${topic.title.toLowerCase().replace(/ /g, "-")}`}>
-                <div
-                  className="p-4 rounded-xl cursor-pointer transition-all hover:opacity-90 active:scale-95"
-                  style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
-                >
-                  <div className="text-2xl mb-2">{topic.emoji}</div>
-                  <p className="text-sm font-bold text-white">{topic.title}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8B9CB3" }}>{topic.desc}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
         {/* Trending Stocks */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -227,4 +194,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-            }
+                }

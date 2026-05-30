@@ -1,7 +1,7 @@
 import { useGetMe, useGetPortfolio, useGetTrendingStocks } from "@workspace/api-client-react";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpRight, ArrowDownRight, Search, PieChart, Bot, Trophy } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Bot, Trophy, BookOpen } from "lucide-react";
 import { Link } from "wouter";
 
 function getGreeting() {
@@ -12,10 +12,19 @@ function getGreeting() {
 }
 
 const QUICK_ACTIONS = [
-  { label: "Trade", icon: Search, href: "/markets", color: "#00D897" },
-  { label: "Portfolio", icon: PieChart, href: "/portfolio", color: "#00D897" },
-  { label: "AI Coach", icon: Bot, href: "/coach", color: "#00D897" },
-  { label: "Challenges", icon: Trophy, href: "/challenges", color: "#00D897" },
+  { label: "Trade", icon: Search, href: "/markets" },
+  { label: "AI Coach", icon: Bot, href: "/coach" },
+  { label: "Challenges", icon: Trophy, href: "/challenges" },
+  { label: "Learn", icon: BookOpen, href: "/learn" },
+];
+
+const LEARN_TOPICS = [
+  { title: "Candlestick Patterns", emoji: "🕯️", desc: "Read candles like a pro" },
+  { title: "Chart Patterns", emoji: "📈", desc: "Head & shoulders, flags..." },
+  { title: "Volume Analysis", emoji: "📊", desc: "Track smart money flow" },
+  { title: "Price Action", emoji: "💹", desc: "Trade without indicators" },
+  { title: "Liquidity Zones", emoji: "🌊", desc: "Find hidden support levels" },
+  { title: "Risk Management", emoji: "🛡️", desc: "Protect your capital" },
 ];
 
 export default function Dashboard() {
@@ -86,13 +95,13 @@ export default function Dashboard() {
             style={{ background: "#0A0E1A", border: "1px solid #1E2A40" }}
           >
             {[
-              { label: "Cash", value: formatCurrency(user?.virtualBalance ?? 0), color: "text-white" },
+              { label: "Cash", value: formatCurrency(user?.virtualBalance ?? 0), color: "white" },
               {
                 label: "Day P&L",
                 value: `${(user?.dailyPL ?? 0) >= 0 ? "+" : ""}${formatCurrency(user?.dailyPL ?? 0, true)}`,
                 color: (user?.dailyPL ?? 0) >= 0 ? "#00D897" : "#FF4757",
               },
-              { label: "Positions", value: String(positions), color: "text-white" },
+              { label: "Positions", value: String(positions), color: "white" },
             ].map((stat, i) => (
               <div
                 key={stat.label}
@@ -103,10 +112,7 @@ export default function Dashboard() {
                 {isUserLoading ? (
                   <Skeleton className="h-5 w-20" />
                 ) : (
-                  <span
-                    className="text-sm font-bold"
-                    style={{ color: typeof stat.color === "string" && stat.color.startsWith("#") ? stat.color : undefined }}
-                  >
+                  <span className="text-sm font-bold" style={{ color: stat.color }}>
                     {stat.value}
                   </span>
                 )}
@@ -129,6 +135,30 @@ export default function Dashboard() {
                     <Icon className="h-7 w-7" style={{ color: "#00D897" }} />
                   </div>
                   <span className="text-xs text-center" style={{ color: "#8B9CB3" }}>{label}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Learn Trading */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-white">Learn Trading</h2>
+            <Link href="/learn">
+              <span className="text-sm font-semibold" style={{ color: "#00D897" }}>See all</span>
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {LEARN_TOPICS.map((topic) => (
+              <Link key={topic.title} href={`/learn/${topic.title.toLowerCase().replace(/ /g, "-")}`}>
+                <div
+                  className="p-4 rounded-xl cursor-pointer transition-all hover:opacity-90 active:scale-95"
+                  style={{ background: "#0F1629", border: "1px solid #1E2A40" }}
+                >
+                  <div className="text-2xl mb-2">{topic.emoji}</div>
+                  <p className="text-sm font-bold text-white">{topic.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8B9CB3" }}>{topic.desc}</p>
                 </div>
               </Link>
             ))}
@@ -193,7 +223,8 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
-}
+            }

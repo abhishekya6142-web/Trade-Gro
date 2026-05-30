@@ -16,8 +16,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const isIndian = symbol.endsWith('.NS') || symbol.endsWith('.BO');
 
   const finalSymbol = symbol.includes('.')
-    ? symbol
-    : `${symbol}.NS`;
+  ? symbol
+  : isIndian
+    ? `${symbol}.NS`
+    : symbol;
 
   const fetchSymbols = isIndian
     ? [finalSymbol]
@@ -42,6 +44,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Pehle requested range try karo
     let result = await tryFetch(finalSymbol, interval, range);
+
+// US stock ke liye direct try karo
+if (!result?.timestamp?.length && !isIndian) {
+  result = await tryFetch(symbol, interval, range);
+}
 
     // Agar data nahi mila toh fallbacks try karo
     if (!result?.timestamp?.length) {

@@ -8,70 +8,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const interval = Array.isArray(req.query.interval)
     ? req.query.interval[0]
     : req.query.interval ?? '1d';
-
   const range = Array.isArray(req.query.range)
     ? req.query.range[0]
     : req.query.range ?? '1mo';
 
-  const isIndian = symbol.endsWith('.NS') || symbol.endsWith('.BO');
+  // Already .NS ya .BO hai toh as-is use karo
+  // US stock hai toh direct use karo
+  // Sirf plain Indian symbol hai toh .NS lagao
+  const isAlreadySuffixed = symbol.endsWith('.NS') || symbol.endsWith('.BO');
+  const isLikelyIndian = !isAlreadySuffixed && (
+    /^[A-Z]{2,10}$/.test(symbol) === false || 
+    ['RELIANCE','TCS','INFY','HDFCBANK','WIPRO','SBIN','TATAMOTORS'].includes(symbol)
+  );
 
-  const finalSymbol = symbol.includes('.')
-  ? symbol
-  : isIndian
-    ? `${symbol}.NS`
-    : symbol;
-
-  const fetchSymbols = isIndian
-    ? [finalSymbol]
-    : [symbol, `${symbol}.NS`];
+  const finalSymbol = isAlreadySuffixed
+    ? symbol
+    : isLikelyIndian
+      ? `${symbol}.NS`
+      : symbol;
 
   const tryFetch = async (sym: string, inv: string, rng: string) => {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${inv}&range=${rng}`;
-
     const r = await fetch(url, {
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json',
       },
     });
-
     const data = await r.json();
-
     return data?.chart?.result?.[0];
   };
 
   try {
-    // Pehle requested range try karo
     let result = await tryFetch(finalSymbol, interval, range);
 
-// US stock ke liye direct try karo
-if (!result?.timestamp?.length && !isIndian) {
-  result = await tryFetch(symbol, interval, range);
-}
-
-    // Agar data nahi mila toh fallbacks try karo
     if (!result?.timestamp?.length) {
       result = await tryFetch(finalSymbol, '1d', '1y');
     }
-
     if (!result?.timestamp?.length) {
       result = await tryFetch(finalSymbol, '1d', '6mo');
     }
-
-    if (!result?.timestamp?.length) {
-      result = await tryFetch(finalSymbol, '1d', '3mo');
-    }
-
     if (!result?.timestamp?.length) {
       result = await tryFetch(finalSymbol, '1d', '1mo');
     }
 
     if (!result?.timestamp?.length) {
-      return res.status(404).json({
-        error: 'No data found',
-        symbol: finalSymbol,
-      });
+      return res.status(404).json({ error: 'No data found', symbol: finalSymbol });
     }
 
     const timestamps: number[] = result.timestamp;
@@ -88,14 +70,9 @@ if (!result?.timestamp?.length && !isIndian) {
       }))
       .filter((c) => c.open && c.high && c.low && c.close);
 
-    return res.status(200).json({
-      symbol: finalSymbol,
-      candles,
-    });
+    return res.status(200).json({ symbol: finalSymbol, candles });
 
   } catch (err) {
-    return res.status(500).json({
-      error: 'Failed to fetch chart data',
-    });
+    return res.status(500).json({ error: 'Failed to fetch chart data' });
   }
-        }
+}

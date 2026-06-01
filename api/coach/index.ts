@@ -12,31 +12,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!message) return res.status(400).json({ error: 'Message required' });
 
   const apiKey = process.env.GEMINI_API_KEY;
-
   if (!apiKey) {
     return res.status(200).json({ message: "DEBUG: GEMINI_API_KEY missing!", tips: [] });
   }
 
   try {
-    // Ye karo:
-const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const systemMessage = `Tu TradeBot hai — Trade-Gro app ka expert AI trading coach. Tu sirf trading, stock markets, technical analysis, chart patterns, candlestick patterns, investing strategies ke baare mein baat karta hai. Hinglish mein baat kar (Hindi + English mix). Short aur clear jawab de. Emojis use kar. Agar koi aur topic pooche toh bolna: "Main sirf trading ke baare mein help kar sakta hoon! 📈"`;
+
     const contents = [
+      {
+        role: 'user',
+        parts: [{ text: systemMessage }],
+      },
+      {
+        role: 'model',
+        parts: [{ text: 'Samajh gaya! Main TradeBot hoon aur sirf trading related sawaalon ka jawab dunga. 📈' }],
+      },
       ...(history ?? []).map((h: any) => ({
         role: h.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: h.content }],
       })),
-      { role: 'user', parts: [{ text: message }] },
+      {
+        role: 'user',
+        parts: [{ text: message }],
+      },
     ];
 
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: `Tu TradeBot hai — Trade-Gro app ka expert AI trading coach. Tu sirf trading, stock markets, technical analysis, chart patterns, candlestick patterns, investing strategies ke baare mein baat karta hai. Hinglish mein baat kar. Short aur clear jawab de. Emojis use kar.` }]
-        },
         contents,
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
+        generationConfig: {
+          maxOutputTokens: 1024,
+          temperature: 0.7,
+        },
       }),
     });
 

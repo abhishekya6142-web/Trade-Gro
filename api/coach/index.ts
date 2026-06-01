@@ -11,44 +11,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { message, history } = req.body;
   if (!message) return res.status(400).json({ error: 'Message required' });
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return res.status(200).json({ message: "DEBUG: GEMINI_API_KEY missing!", tips: [] });
+    return res.status(200).json({ message: "DEBUG: GROQ_API_KEY missing!", tips: [] });
   }
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
-
-    const systemMessage = `Tu TradeBot hai — Trade-Gro app ka expert AI trading coach. Tu sirf trading, stock markets, technical analysis, chart patterns, candlestick patterns, investing strategies ke baare mein baat karta hai. Hinglish mein baat kar (Hindi + English mix). Short aur clear jawab de. Emojis use kar. Agar koi aur topic pooche toh bolna: "Main sirf trading ke baare mein help kar sakta hoon! 📈"`;
-
-    const contents = [
-      {
-        role: 'user',
-        parts: [{ text: systemMessage }],
-      },
-      {
-        role: 'model',
-        parts: [{ text: 'Samajh gaya! Main TradeBot hoon aur sirf trading related sawaalon ka jawab dunga. 📈' }],
-      },
-      ...(history ?? []).map((h: any) => ({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: h.content }],
-      })),
-      {
-        role: 'user',
-        parts: [{ text: message }],
-      },
-    ];
-
-    const response = await fetch(url, {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        contents,
-        generationConfig: {
-          maxOutputTokens: 1024,
-          temperature: 0.7,
-        },
+        model: 'llama3-8b-8192',
+        max_tokens: 1024,
+        temperature: 0.7,
+        messages: [
+          {
+            role: 'system',
+            content: `Tu TradeBot hai — Trade-Gro app ka expert AI trading coach. Tu sirf trading, stock markets, technical analysis, chart patterns, candlestick patterns, investing strategies ke baare mein baat karta hai. Hinglish mein baat kar (Hindi + English mix). Short aur clear jawab de. Emojis use kar.`,
+          },
+          ...(history ?? []).map((h: any) => ({
+            role: h.role,
+            content: h.content,
+          })),
+          { role: 'user', content: message },
+        ],
       }),
     });
 
@@ -58,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: `DEBUG: ${data.error.message}`, tips: [] });
     }
 
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "Kuch gadbad ho gayi!";
+    const reply = data?.choices?.[0]?.message?.content ?? "Kuch gadbad ho gayi!";
     return res.status(200).json({ message: reply, tips: [] });
 
   } catch (error: any) {
